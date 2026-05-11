@@ -2300,7 +2300,19 @@ if (argv.length > 0) {
   dispatch(cmd, rest);
 } else {
   // repl mode: stays open and reads commands line by line
-  console.log(`${bold('pokescope')} — type ${cyan('help')} to see available commands, ${cyan('exit')} to quit.\n`);
+  const STARTUP_ARTS = [
+    '(^w^)7',
+    '(>﹏<)ゝ',
+    'ᓚ₍⑅^..^₎',
+    '/(-3-)',
+    "_( '/3\\' )_",
+    '<❪❪꒰˶ᵔ ᵕ ᵔ˶꒱❫❫>',
+    '@(@~@)@',
+    "++(' _ ')++",
+    '(\\/) ( ;,,;)(\\/)',
+  ];
+  const art = STARTUP_ARTS[Math.floor(Math.random() * STARTUP_ARTS.length)];
+  console.log(`${bold('pokescope')} ${art}  type ${blue('help')} to see available commands, ${blue('exit')} to quit.\n`);
 
   const rl = readline.createInterface({
     input: process.stdin,
