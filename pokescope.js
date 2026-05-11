@@ -13,6 +13,7 @@ const GREEN = '\x1b[32m';
 const YELLOW = '\x1b[33m';
 const WHITE = '\x1b[37m';
 const CYAN = '\x1b[36m';
+const BLUE = '\x1b[38;2;37;150;190m';
 
 const bold = s => `${B}${s}${R}`;
 const dim = s => `${DIM}${s}${R}`;
@@ -20,6 +21,7 @@ const red = s => `${RED}${s}${R}`;
 const green = s => `${GREEN}${s}${R}`;
 const yellow = s => `${YELLOW}${s}${R}`;
 const cyan = s => `${CYAN}${s}${R}`;
+const blue = s => `${BLUE}${s}${R}`;
 
 // strips html tags and entities from showdown's output so it's readable in a terminal
 // takes: s (string) — raw html string from showdown
@@ -319,30 +321,29 @@ function cmdData(args) {
 
 function showHelp() {
   console.log(`
-${bold('Commands:')}
-  ${cyan('weakness')} <pokemon|type[,type2]> [inverse]
-      Weaknesses, resistances, and immunities.
-      e.g. weakness charizard
-           weakness fire,flying
-           weakness water inverse
+${blue('weakness')} <pokemon|type[,type2]> [inverse]
+  Weaknesses, resistances, and immunities.
+  e.g. weakness charizard
+       weakness fire,flying
+       weakness water inverse
 
-  ${cyan('eff')} <move|type>, <pokemon|type>
-      Type effectiveness of a move or type against a defender.
-      e.g. eff earthquake, charizard
-           eff water, fire
+${blue('eff')} <move|type>, <pokemon|type>
+  Type effectiveness of a move or type against a defender.
+  e.g. eff earthquake, charizard
+       eff water, fire
 
-  ${cyan('data')} <name>
-      Pokédex entry for a Pokémon, move, item, ability, or nature.
-      e.g. data garchomp
-           data earthquake
-           data choice band
+${blue('data')} <name>
+  Pokédex entry for a Pokémon, move, item, ability, or nature.
+  e.g. data garchomp
+       data earthquake
+       data choice band
 
-  ${cyan('coverage')} <move1[,move2,move3,move4]>
-      Best type coverage for a set of up to 4 moves or types.
-      e.g. coverage surf,thunderbolt,icebeam,earthquake
+${blue('coverage')} <move1[,move2,move3,move4]>
+  Best type coverage for a set of up to 4 moves or types.
+  e.g. coverage surf,thunderbolt,icebeam,earthquake
 
-  ${cyan('help')}      Show this help.
-  ${cyan('exit')}      Exit the program.  ${dim('(REPL mode only)')}
+${blue('help')}  Show this help.
+${blue('exit')}  Exit the program.  ${dim('(REPL mode only)')}
 `);
 }
 
@@ -395,7 +396,7 @@ if (args.length > 0) {
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
-    prompt: cyan('› '),
+    prompt: `${B}${CYAN}›${R} `,
   });
 
   rl.prompt();
@@ -404,7 +405,6 @@ if (args.length > 0) {
     const trimmed = line.trim();
     if (!trimmed) { rl.prompt(); return; }
     if (trimmed === 'exit' || trimmed === 'quit') {
-      console.log('Goodbye!');
       process.exit(0);
     }
     const [cmd] = trimmed.split(/\s+/);
@@ -415,7 +415,6 @@ if (args.length > 0) {
 
   // ctrl+d
   rl.on('close', () => {
-    console.log('\nGoodbye!');
     process.exit(0);
   });
 }
