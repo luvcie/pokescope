@@ -319,6 +319,31 @@ function cmdData(args) {
   }
 }
 
+// takes: args (string[]) — optional number for how many to return
+// returns: nothing, prints random pokemon
+function cmdRandomPokemon(args) {
+  const count = Math.min(parseInt(args[0]) || 1, 10);
+  const pool = Dex.species.all().filter(s => s.exists && !s.isNonstandard && s.num > 0);
+  for (let i = 0; i < count; i++) {
+    const p = pool[Math.floor(Math.random() * pool.length)];
+    console.log(`${bold(p.name)} — ${p.types.join('/')} ${dim('#' + p.num)}`);
+  }
+  console.log();
+}
+
+// takes: args (string[]) — optional number for how many to return
+// returns: nothing, prints random moves
+function cmdRandomMove(args) {
+  const count = Math.min(parseInt(args[0]) || 1, 10);
+  const pool = Dex.moves.all().filter(m => m.exists && !m.isNonstandard && m.id !== 'struggle');
+  for (let i = 0; i < count; i++) {
+    const m = pool[Math.floor(Math.random() * pool.length)];
+    const bp = m.basePower || (m.basePowerCallback ? '(variable)' : '—');
+    console.log(`${bold(m.name)} — ${m.type} ${m.category} BP:${bp}`);
+  }
+  console.log();
+}
+
 function showHelp() {
   console.log(`
 ${blue('weakness')} <pokemon|type[,type2]> [inverse]
@@ -341,6 +366,16 @@ ${blue('data')} <name>
 ${blue('coverage')} <move1[,move2,move3,move4]>
   Best type coverage for a set of up to 4 moves or types.
   e.g. coverage surf,thunderbolt,icebeam,earthquake
+
+${blue('randompokemon')} [count]
+  Random pokemon. optionally pass a number to get multiple.
+  e.g. randompokemon
+       randompokemon 3
+
+${blue('randommove')} [count]
+  Random move. optionally pass a number to get multiple.
+  e.g. randommove
+       randommove 5
 
 ${blue('help')}  Show this help.
 ${blue('exit')}  Exit the program.  ${dim('(REPL mode only)')}
@@ -372,6 +407,16 @@ function dispatch(cmd, args) {
   case 'coverage':
   case 'cover':
     cmdCoverage(args);
+    break;
+  case 'randompokemon':
+  case 'randpoke':
+  case 'rollpokemon':
+    cmdRandomPokemon(args);
+    break;
+  case 'randommove':
+  case 'randmove':
+  case 'rollmove':
+    cmdRandomMove(args);
     break;
   case 'help':
   case '--help':
