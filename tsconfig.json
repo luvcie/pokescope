@@ -10,5 +10,5 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["pokescope.ts"]
+  "include": ["pokescope.ts", "src/**/*.ts"]
 }
