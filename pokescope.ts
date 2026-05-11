@@ -39,58 +39,29 @@ const GEN_ALIASES: Record<string, string> = {
 };
 const GEN_PATTERN = /^(gen[1-9]|rby|rb|gsc|gs|adv|rs|dpp|dp|bw2?|oras|xy|usum|sm|ss|sv)$/;
 
-// splits a filter string into tokens, using commas when present,
-// otherwise splits on spaces with smart merging for multi-word patterns
+// splits a filter string into tokens with smart merging for multi-word patterns.
+// commas separate independent filters; within each comma group, spaces are smart-split.
 function splitFilterTokens(raw: string): string[] {
-  if (raw.includes(',')) return raw.split(',').map(s => s.trim()).filter(Boolean);
-  const words = raw.split(/\s+/).filter(Boolean);
-  const tokens: string[] = [];
-  let i = 0;
-  while (i < words.length) {
-    const w = words[i].toLowerCase();
-    const next = words[i + 1] ?? '';
-    const nextlc = next.toLowerCase();
-    const after = words[i + 2] ?? '';
-    // stat inequality: "spe > 100", "100 < spe"
-    if (next && /^(>=|<=|!=|>|<|=)$/.test(next) && after) {
-      tokens.push(words[i] + ' ' + next + ' ' + after);
-      i += 3;
-      continue;
+  const result: string[] = [];
+  for (const group of raw.split(',').map(s => s.trim()).filter(Boolean)) {
+    if (!group.includes(' ')) { result.push(group); continue; }
+    const words = group.split(/\s+/).filter(Boolean);
+    let i = 0;
+    while (i < words.length) {
+      const w = words[i].toLowerCase();
+      const next = words[i + 1] ?? '';
+      const nextlc = next.toLowerCase();
+      const after = words[i + 2] ?? '';
+      if (next && /^(>=|<=|!=|>|<|=)$/.test(next) && after) { result.push(words[i] + ' ' + next + ' ' + after); i += 3; continue; }
+      if (nextlc === 'asc' || nextlc === 'desc') { result.push(words[i] + ' ' + next); i += 2; continue; }
+      if ((w === 'resists' || w === 'resist' || w === 'weak' || w === 'weakness') && next) { result.push(words[i] + ' ' + next); i += 2; continue; }
+      if ((w === 'boosts' || w === 'boost' || w === 'lowers' || w === 'lower' || w === 'zboosts' || w === 'zboost') && next) { result.push(words[i] + ' ' + next); i += 2; continue; }
+      if (w === 'egg' && nextlc === 'group' && after) { result.push(words[i] + ' ' + next + ' ' + after); i += 3; continue; }
+      if (w === 'fully' && nextlc === 'evolved') { result.push(words[i] + ' ' + next); i += 2; continue; }
+      result.push(words[i]); i++;
     }
-    // sort: "spe asc", "bst desc"
-    if (nextlc === 'asc' || nextlc === 'desc') {
-      tokens.push(words[i] + ' ' + next);
-      i += 2;
-      continue;
-    }
-    // resists/weak <target>
-    if ((w === 'resists' || w === 'resist' || w === 'weak' || w === 'weakness') && next) {
-      tokens.push(words[i] + ' ' + next);
-      i += 2;
-      continue;
-    }
-    // boosts/lowers/zboosts <stat>
-    if ((w === 'boosts' || w === 'boost' || w === 'lowers' || w === 'lower' || w === 'zboosts' || w === 'zboost') && next) {
-      tokens.push(words[i] + ' ' + next);
-      i += 2;
-      continue;
-    }
-    // egg group <name>
-    if (w === 'egg' && nextlc === 'group' && after) {
-      tokens.push(words[i] + ' ' + next + ' ' + after);
-      i += 3;
-      continue;
-    }
-    // fully evolved
-    if (w === 'fully' && nextlc === 'evolved') {
-      tokens.push(words[i] + ' ' + next);
-      i += 2;
-      continue;
-    }
-    tokens.push(words[i]);
-    i++;
   }
-  return tokens;
+  return result;
 }
 
 // splits gen prefix out of comma/slash-separated args, returns gen-specific dex and remaining targets
@@ -661,9 +632,9 @@ function cmdLearn(args: string[]): void {
   console.log();
 }
 
-function cmdDexsearch(args: string[]): void {
+function cmdDexsearch(args: string[], poolOnly = false): Species[] | void {
   if (!args.length) {
-    console.log('Usage: dexsearch [gen] <filter>[, filter, ...]');
+    if (!poolOnly) console.log('Usage: dexsearch [gen] <filter>[, filter, ...]');
     return;
   }
 
@@ -1349,6 +1320,8 @@ function cmdDexsearch(args: string[]): void {
     results.sort((a, b) => a.name.localeCompare(b.name));
   }
 
+  if (poolOnly) return results;
+
   // --- output ---
   const genLabel = genMod !== 'gen9' ? dim(` [${genMod}]`) : '';
 
@@ -1374,9 +1347,9 @@ function cmdDexsearch(args: string[]): void {
   console.log();
 }
 
-function cmdMovesearch(args: string[]): void {
+function cmdMovesearch(args: string[], poolOnly = false): Move[] | void {
   if (!args.length) {
-    console.log('Usage: movesearch [gen] <filter>[, filter, ...]');
+    if (!poolOnly) console.log('Usage: movesearch [gen] <filter>[, filter, ...]');
     console.log('  e.g. movesearch fire, physical, bp > 80');
     console.log('       movesearch contact, priority+');
     console.log('       movesearch boosts atk, special');
@@ -1761,6 +1734,8 @@ function cmdMovesearch(args: string[]): void {
     results.sort((a, b) => a.name.localeCompare(b.name));
   }
 
+  if (poolOnly) return results;
+
   const genLabel = genMod !== 'gen9' ? dim(` [${genMod}]`) : '';
 
   if (results.length === 0) {
@@ -2109,24 +2084,60 @@ function cmdStatcalc(args: string[]): void {
 }
 
 function cmdRandomPokemon(args: string[]): void {
-  const count = Math.min(parseInt(args[0]) || 1, 10);
-  const pool = Dex.species.all().filter(s => s.exists && !s.isNonstandard && s.num > 0);
+  let count = 1;
+  let filterArgs = args;
+  if (args.length && /^\d+$/.test(args[0])) {
+    count = Math.min(parseInt(args[0]), 10);
+    filterArgs = args.slice(1);
+  }
+
+  let pool: Species[];
+  if (!filterArgs.length) {
+    pool = Dex.species.all().filter(s => s.exists && !s.isNonstandard && s.num > 0);
+  } else {
+    const result = cmdDexsearch(filterArgs, true) as Species[] | undefined;
+    if (!result?.length) {
+      console.log('\nNo Pokémon match those filters.\n');
+      return;
+    }
+    pool = result;
+  }
+
+  const lines: string[] = [];
   for (let i = 0; i < count; i++) {
     const p = pool[Math.floor(Math.random() * pool.length)];
-    console.log(`${bold(p.name)} — ${p.types.join('/')} ${dim('#' + p.num)}`);
+    lines.push(`${bold(p.name)} — ${p.types.join('/')} ${dim('#' + p.num)}`);
   }
-  console.log();
+  console.log('\n' + lines.join('\n') + '\n');
 }
 
 function cmdRandomMove(args: string[]): void {
-  const count = Math.min(parseInt(args[0]) || 1, 10);
-  const pool = Dex.moves.all().filter(m => m.exists && !m.isNonstandard && m.id !== 'struggle');
+  let count = 1;
+  let filterArgs = args;
+  if (args.length && /^\d+$/.test(args[0])) {
+    count = Math.min(parseInt(args[0]), 10);
+    filterArgs = args.slice(1);
+  }
+
+  let pool: Move[];
+  if (!filterArgs.length) {
+    pool = Dex.moves.all().filter(m => m.exists && !m.isNonstandard && m.id !== 'struggle');
+  } else {
+    const result = cmdMovesearch(filterArgs, true) as Move[] | undefined;
+    if (!result?.length) {
+      console.log('\nNo moves match those filters.\n');
+      return;
+    }
+    pool = result;
+  }
+
+  const lines: string[] = [];
   for (let i = 0; i < count; i++) {
     const m = pool[Math.floor(Math.random() * pool.length)];
     const bp = m.basePower || (m.basePowerCallback ? '(variable)' : '—');
-    console.log(`${bold(m.name)} — ${m.type} ${m.category} BP:${bp}`);
+    lines.push(`${bold(m.name)} — ${m.type} ${m.category} BP:${bp}`);
   }
-  console.log();
+  console.log('\n' + lines.join('\n') + '\n');
 }
 
 function showHelp(): void {
@@ -2198,15 +2209,19 @@ ${blue('statcalc')} [level] [pokemon or base stat] [stat] [ivs] [evs] [nature] [
        statcalc 100 252ev positive +1
        statcalc lc 45 atk uninvested
 
-${blue('randompokemon')} [count]
-  Random pokemon. optionally pass a number to get multiple.
+${blue('randompokemon')} [count] [filters]  Alias: rp
+  Random Pokémon, optionally filtered by dexsearch criteria.
   e.g. randompokemon
        randompokemon 3
+       randompokemon fire, ou
+       randompokemon 3 dragon, spe > 100
 
-${blue('randommove')} [count]
-  Random move. optionally pass a number to get multiple.
+${blue('randommove')} [count] [filters]  Alias: rm
+  Random move, optionally filtered by movesearch criteria.
   e.g. randommove
        randommove 5
+       randommove water, special
+       randommove 3 bp > 90, contact
 
 ${blue('help')}  Show this help.
 ${blue('exit')}  Exit the program.  ${dim('(REPL mode only)')}
