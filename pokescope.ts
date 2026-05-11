@@ -2312,7 +2312,7 @@ if (argv.length > 0) {
     '(\\/) ( ;,,;)(\\/)',
   ];
   const art = STARTUP_ARTS[Math.floor(Math.random() * STARTUP_ARTS.length)];
-  console.log(`${bold('pokescope')} ${art}  type ${blue('help')} to see available commands, ${blue('exit')} to quit.\n`);
+  console.log(`${bold('pokescope')} ${art} type ${blue('help')} to see available commands, ${blue('exit')} to quit.\n`);
 
   const rl = readline.createInterface({
     input: process.stdin,
