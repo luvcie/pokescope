@@ -1878,6 +1878,7 @@ function cmdItemsearch(args: string[]): void {
     }
     for (const item of dex.items.all()) {
       if (!item.fling) continue;
+      if (/^(tm|tr)\d+$/.test(item.id)) continue;
       if (bp && item.fling.basePower !== bp) continue;
       if (effect && item.fling.status !== effect && (item.fling as any).volatileStatus !== effect) continue;
       foundItems.push(item.name);
@@ -1901,18 +1902,27 @@ function cmdItemsearch(args: string[]): void {
       foundItems.push(item.name);
     }
 
-  // --- general: score by description word matches ---
+  // --- general: score by description + name word matches ---
   } else {
+    const searchingForTMTR = searchedWords.some(w => w === 'tm' || w === 'tr');
     let bestScore = 0;
     for (const item of dex.items.all()) {
       if (item.isNonstandard === 'CAP' || item.isNonstandard === 'LGPE' || item.isNonstandard === 'Future') continue;
+      // filter TMs/TRs unless explicitly searching for them
+      if (/^(tm|tr)\d+$/.test(item.id) && !searchingForTMTR) continue;
 
       let desc = item.desc || item.shortDesc || '';
       if (/[1-9.]+x/.test(desc)) desc += ' increases';
       if (item.isBerry) desc += ' berry';
       desc = desc.replace(/super[-\s]effective/g, 'supereffective');
-      const descWords = desc.toLowerCase().replace(/-/g, ' ').replace(/[^a-z0-9\s/]/g, '')
-        .replace(/(\D)\./, (_: string, p: string) => p).split(/\s+/);
+      // augment description with alternate phrasings for common concepts
+      if (/can evolve/i.test(desc)) desc += ' not fully evolved';
+      if (/cannot evolve/i.test(desc)) desc += ' fully evolved not cannot';
+      const descWords = desc.toLowerCase().replace(/-/g, ' ').replace(/[^a-z0-9\s/]/g, '').split(/\s+/);
+
+      // include item name words so e.g. "choice" matches Choice Band
+      const nameWords = item.name.toLowerCase().replace(/[^a-z\s]/g, '').split(/\s+/).filter(Boolean);
+      const allWords = new Set([...descWords, ...nameWords]);
 
       let score = 0;
       for (const w of searchedWords) {
@@ -1922,7 +1932,7 @@ function cmdItemsearch(args: string[]): void {
         } else if (w === 'specialdefense') {
           const idx = descWords.indexOf('sp');
           if (idx >= 0 && descWords[idx + 1] === 'def') score++;
-        } else if (descWords.includes(w)) {
+        } else if (allWords.has(w)) {
           score++;
         }
       }
