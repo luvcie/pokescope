@@ -41,18 +41,15 @@ const GEN_PATTERN = /^(gen[1-9]|rby|rb|gsc|gs|adv|rs|dpp|dp|bw2?|oras|xy|usum|sm
 
 // splits gen prefix out of comma/slash-separated args, returns gen-specific dex and remaining targets
 function splitGen(args: string[]): { dex: ModdedDex; targets: string[] } {
-  const parts = args.join(' ').split(/[,/]/).map(s => s.trim()).filter(Boolean);
+  let raw = args.join(' ');
   let dex: ModdedDex = Dex;
-  const targets: string[] = [];
-  for (const part of parts) {
-    const id = part.toLowerCase().replace(/\s+/g, '');
-    const m = id.match(GEN_PATTERN);
-    if (m) {
-      dex = Dex.mod(GEN_ALIASES[m[1]] ?? m[1]);
-    } else {
-      targets.push(part);
-    }
+  // allow gen prefix with or without a following comma: "gen3 ice beam" or "gen3, ice beam"
+  const genPrefix = raw.match(/^(gen[1-9]|rby|rb|gsc|gs|adv|rs|dpp|dp|bw2?|oras|xy|usum|sm|ss|sv)\s*,?\s*/i);
+  if (genPrefix) {
+    dex = Dex.mod(GEN_ALIASES[genPrefix[1].toLowerCase()] ?? genPrefix[1].toLowerCase());
+    raw = raw.slice(genPrefix[0].length);
   }
+  const targets = raw.split(/[,/]/).map(s => s.trim()).filter(Boolean);
   return { dex, targets };
 }
 
