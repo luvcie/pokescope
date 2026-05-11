@@ -2,7 +2,7 @@
 'use strict';
 
 const readline = require('readline');
-const { Dex } = require('pokemon-showdown');
+const { Dex, TeamValidator } = require('pokemon-showdown');
 
 // ansi escape codes for terminal colors
 const R = '\x1b[0m';
@@ -319,6 +319,153 @@ function cmdData(args) {
   }
 }
 
+// parses a learnset source code like "9L24" or "8M" into a readable string
+// takes: source (string)
+// returns: string like "Gen 9 level-up (24)" or "Gen 8 TM"
+function parseSource(source) {
+  const gen = source.charAt(0);
+  const method = source.charAt(1);
+  const extra = source.slice(2);
+  const methods = { L: `level-up${extra ? ' (' + extra + ')' : ''}`, M: 'TM/HM', T: 'tutor', E: 'egg', S: 'event', D: 'dream world', V: 'virtual console transfer' };
+  return `Gen ${gen} ${methods[method] || method}`;
+}
+
+// walks the full prevo chain and collects all learnset sources for a move
+// takes: speciesId (string), moveId (string)
+// returns: { sources: string[], learnedBy: string } or null if not found anywhere
+function findLearnSources(speciesId, moveId) {
+  let current = Dex.species.get(speciesId);
+  const allSources = [];
+  let learnedBy = null;
+  while (current.exists) {
+    const data = Dex.species.getLearnsetData(current.id);
+    const sources = data.learnset?.[moveId];
+    if (sources && sources.length) {
+      if (!learnedBy) learnedBy = current.name;
+      for (const s of sources) {
+        if (!allSources.includes(s)) allSources.push(s);
+      }
+    }
+    if (!current.prevo) break;
+    current = Dex.species.get(current.prevo);
+  }
+  if (!allSources.length) return null;
+  return { sources: allSources, learnedBy };
+}
+
+function cmdLearn(args) {
+  if (!args.length) {
+    console.log('Usage: learn [gen] <pokemon>, <move>[, <move2>, ...]');
+    console.log('  e.g. learn pikachu, thunderbolt');
+    console.log('       learn gen6, togekiss, nasty plot');
+    console.log('       learn gen8, umbreon, wish');
+    return;
+  }
+
+  const raw = args.join(' ');
+  let genMod = 'gen9';
+  let rest = raw;
+
+  // check for gen prefix like "gen6, ..." or "gen6 ..."
+  const genMatch = raw.match(/^(gen[1-9]|rby|gsc|adv|dpp|bw2?|oras|usum|ss|sv)\s*,?\s*/i);
+  if (genMatch) {
+    const genAliases = { rby: 'gen1', gsc: 'gen2', adv: 'gen3', dpp: 'gen4', bw: 'gen5', bw2: 'gen5', oras: 'gen6', usum: 'gen7', ss: 'gen8', sv: 'gen9' };
+    const rawGen = genMatch[1].toLowerCase();
+    genMod = genAliases[rawGen] || rawGen;
+    rest = raw.slice(genMatch[0].length);
+  }
+
+  // check for lc (level 5) flag
+  let level = 100;
+  if (rest.match(/\blc\b/i)) {
+    level = 5;
+    rest = rest.replace(/\blc\b/i, '').replace(/,\s*,/, ',').trim().replace(/^,|,$/, '').trim();
+  }
+
+  let pokemonName, moveNames;
+
+  if (rest.includes(',')) {
+    const parts = rest.split(',').map(s => s.trim());
+    pokemonName = parts[0];
+    moveNames = parts.slice(1);
+  } else {
+    // no comma: try each split to find valid pokemon + valid move
+    const tokens = rest.split(' ');
+    let found = false;
+    for (let i = 1; i < tokens.length; i++) {
+      const testPoke = Dex.species.get(tokens.slice(0, i).join(' '));
+      const testMove = Dex.moves.get(tokens.slice(i).join(' '));
+      if (testPoke.exists && testMove.exists) {
+        pokemonName = tokens.slice(0, i).join(' ');
+        moveNames = [tokens.slice(i).join(' ')];
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      pokemonName = tokens[0];
+      moveNames = [tokens.slice(1).join(' ')];
+    }
+  }
+
+  if (!moveNames || !moveNames[0]) {
+    console.error('specify at least one move, e.g. learn pikachu thunderbolt');
+    return;
+  }
+
+  const dex = Dex.mod(genMod);
+  const species = dex.species.get(pokemonName);
+  if (!species.exists) {
+    console.error(`'${pokemonName}' is not a recognized pokemon`);
+    return;
+  }
+
+  const moves = moveNames.map(m => dex.moves.get(m));
+  for (const m of moves) {
+    if (!m.exists) { console.error(`'${m.id}' is not a recognized move`); return; }
+  }
+
+  const formatId = `${genMod}ou`;
+  const validator = TeamValidator.get(formatId);
+  const setSources = validator.allSources(species);
+  const problems = validator.validateMoves(species, moves.map(m => m.name), setSources, { name: species.name, species: species.name, level });
+
+  const canLearn = problems.length === 0;
+  const combo = moves.map(m => m.name).join(' + ');
+  const genLabel = genMod !== 'gen9' ? dim(` [${genMod}]`) : '';
+  console.log(`\n${bold(species.name)}${genLabel} ${canLearn ? green('can') : red("can't")} learn ${bold(combo)}`);
+
+  const genNum = genMod.replace('gen', '');
+  for (const move of moves) {
+    const found = findLearnSources(species.id, move.id);
+    if (!found) {
+      console.log(`  ${move.name}: ${dim('not in learnset')}`);
+      continue;
+    }
+    const { sources, learnedBy } = found;
+    // filter to relevant gen and earlier
+    const relevant = sources.filter(s => parseInt(s.charAt(0)) <= parseInt(genNum));
+    const display = relevant.slice(0, 5).map(parseSource);
+    const origin = learnedBy !== species.name ? dim(` (via ${learnedBy})`) : '';
+    let srcStr;
+    if (display.length) {
+      srcStr = display.join(', ') + (relevant.length > 5 ? dim(' ...') : '');
+    } else if (canLearn) {
+      srcStr = dim('available (no source records for this gen)');
+    } else {
+      srcStr = dim('not available in this gen');
+    }
+    console.log(`  ${move.name}${origin}: ${srcStr}`);
+  }
+
+  if (problems.length) {
+    console.log(`\n  ${red('issues:')}`);
+    for (const p of problems) console.log(`  ${dim(p)}`);
+  }
+
+  console.log();
+}
+
 function cmdStatcalc(args) {
   if (!args.length) {
     console.log('Usage: statcalc [level] [pokemon or base stat] [stat] [ivs] [evs] [nature] [modifier]');
@@ -507,6 +654,11 @@ ${blue('coverage')} <move1[,move2,move3,move4]>
   Best type coverage for a set of up to 4 moves or types.
   e.g. coverage surf,thunderbolt,icebeam,earthquake
 
+${blue('learn')} <pokemon>, <move>[, move2, ...]
+  Check if a pokemon can learn a move (or combination), and how.
+  e.g. learn pikachu, thunderbolt
+       learn togekiss, nasty plot, air slash
+
 ${blue('statcalc')} [level] [pokemon or base stat] [stat] [ivs] [evs] [nature] [modifier]
   Calculate the final value of a stat.
   note: level must use lv prefix (lv50, lv1), bare numbers are treated as base stats.
@@ -554,6 +706,10 @@ function dispatch(cmd, args) {
   case 'coverage':
   case 'cover':
     cmdCoverage(args);
+    break;
+  case 'learn':
+  case 'learnset':
+    cmdLearn(args);
     break;
   case 'statcalc':
     cmdStatcalc(args);
