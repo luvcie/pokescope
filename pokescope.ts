@@ -1978,6 +1978,7 @@ ${blue('exit')}  Exit the program.  ${dim('(REPL mode only)')}
 }
 
 function dispatch(cmd: string, args: string[]): void {
+  if (cmd.startsWith('/')) cmd = cmd.slice(1);
   switch (cmd.toLowerCase()) {
   case 'weakness':
   case 'weak':
