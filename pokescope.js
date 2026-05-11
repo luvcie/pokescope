@@ -23,9 +23,44 @@ const yellow = s => `${YELLOW}${s}${R}`;
 const cyan = s => `${CYAN}${s}${R}`;
 const blue = s => `${BLUE}${s}${R}`;
 
+const GEN_ALIASES = { rby: 'gen1', gsc: 'gen2', adv: 'gen3', dpp: 'gen4', bw: 'gen5', bw2: 'gen5', oras: 'gen6', usum: 'gen7', ss: 'gen8', sv: 'gen9' };
+
+// splits gen prefix out of comma/slash-separated args, returns gen-specific dex and remaining targets
+function splitGen(args) {
+  const parts = args.join(' ').split(/[,/]/).map(s => s.trim()).filter(Boolean);
+  let dex = Dex;
+  const targets = [];
+  for (const part of parts) {
+    const id = part.toLowerCase().replace(/\s+/g, '');
+    const m = id.match(/^(gen[1-9]|rby|gsc|adv|dpp|bw2?|oras|usum|ss|sv)$/);
+    if (m) {
+      dex = Dex.mod(GEN_ALIASES[m[1]] || m[1]);
+    } else {
+      targets.push(part);
+    }
+  }
+  return { dex, targets };
+}
+
+// calculates type effectiveness accounting for onEffectiveness overrides (Freeze-Dry, Flying Press, etc.)
+function calcTypeEff(dex, source, defTypes) {
+  const immune = dex.getImmunity(source, { types: defTypes });
+  const ignoreImm = source.ignoreImmunity && (source.ignoreImmunity === true || source.ignoreImmunity[source.type]);
+  if (!immune && !ignoreImm) return 0;
+  let totalTypeMod = 0;
+  const isStatus = source.effectType === 'Move' && source.category === 'Status';
+  const hasNoPower = source.effectType === 'Move' && !source.basePower && !source.basePowerCallback;
+  if (!isStatus && !hasNoPower) {
+    for (const type of defTypes) {
+      const baseMod = dex.getEffectiveness(source, type);
+      const moveMod = source.onEffectiveness?.call({ dex }, baseMod, null, type, source);
+      totalTypeMod += typeof moveMod === 'number' ? moveMod : baseMod;
+    }
+  }
+  return 2 ** totalTypeMod;
+}
+
 // strips html tags and entities from showdown's output so it's readable in a terminal
-// takes: s (string) — raw html string from showdown
-// returns: plain text string
 function stripHtml(s) {
   return s
     .replace(/<[^>]+>/g, '')
@@ -38,45 +73,81 @@ function stripHtml(s) {
 
 function cmdWeakness(args) {
   if (!args.length) {
-    console.log('Usage: weakness <pokemon|type[,type2]> [inverse]');
+    console.log('Usage: weakness [gen] <pokemon|type[,type2]> [inverse]');
     return;
   }
 
-  const raw = args.join(' ');
-  const parts = raw.split(/[,/]/).map(s => s.trim());
+  // strip trailing "inverse" before any other parsing
   let isInverse = false;
-
-  if (parts[parts.length - 1].toLowerCase() === 'inverse') {
+  let raw = args.join(' ').trim();
+  if (/\binverse$/i.test(raw)) {
     isInverse = true;
-    parts.pop();
+    raw = raw.replace(/[,\s]+inverse$/i, '').trim();
+  }
+
+  const { dex, targets } = splitGen(raw.split(/\s+/));
+
+  if (!targets.length) {
+    console.log('Usage: weakness [gen] <pokemon|type[,type2]> [inverse]');
+    return;
   }
 
   const types = [];
   let label = '';
+  let isSpecies = false;
 
-  const species = Dex.species.get(parts[0]);
-  if (species.exists) {
-    for (const t of species.types) types.push(t);
-    label = species.name;
-    for (let i = 1; i < parts.length; i++) {
-      const extra = Dex.types.get(parts[i]);
+  // for first target: try exact species, exact type, then fuzzy (matching Showdown priority)
+  const firstSpecies = dex.species.get(targets[0]);
+  const firstType = dex.types.get(targets[0]);
+
+  if (firstSpecies.exists) {
+    isSpecies = true;
+    for (const t of firstSpecies.types) types.push(t);
+    label = firstSpecies.name;
+    for (let i = 1; i < targets.length; i++) {
+      let extra = dex.types.get(targets[i]);
+      if (!extra.exists) {
+        const fuzzy = dex.dataSearch(targets[i], ['TypeChart']);
+        if (fuzzy?.length) extra = dex.types.get(fuzzy[0].name);
+      }
+      if (extra.exists && !types.includes(extra.name)) {
+        types.push(extra.name);
+        label += '/' + extra.name;
+      }
+    }
+  } else if (firstType.exists) {
+    types.push(firstType.name);
+    label = firstType.name;
+    for (let i = 1; i < targets.length; i++) {
+      let extra = dex.types.get(targets[i]);
+      if (!extra.exists) {
+        const fuzzy = dex.dataSearch(targets[i], ['TypeChart']);
+        if (fuzzy?.length) extra = dex.types.get(fuzzy[0].name);
+      }
       if (extra.exists && !types.includes(extra.name)) {
         types.push(extra.name);
         label += '/' + extra.name;
       }
     }
   } else {
-    for (const p of parts) {
-      const t = Dex.types.get(p);
-      if (t.exists) {
-        types.push(t.name);
-        label = label ? label + '/' + t.name : t.name;
+    // fuzzy: try species first, then type
+    const fuzzySpecies = dex.dataSearch(targets[0], ['Pokedex']);
+    const fuzzyType = dex.dataSearch(targets[0], ['TypeChart']);
+    if (fuzzySpecies?.length) {
+      const sp = dex.species.get(fuzzySpecies[0].name);
+      if (sp.exists) {
+        isSpecies = true;
+        for (const t of sp.types) types.push(t);
+        label = sp.name;
       }
+    } else if (fuzzyType?.length) {
+      const t = dex.types.get(fuzzyType[0].name);
+      if (t.exists) { types.push(t.name); label = t.name; }
     }
   }
 
   if (types.length === 0) {
-    console.error(`'${raw}' is not a recognized Pokémon or type.`);
+    console.error(`'${targets.join(', ')}' is not a recognized Pokemon or type${dex !== Dex ? ' in ' + dex.currentMod : ''}.`);
     return;
   }
 
@@ -87,11 +158,11 @@ function cmdWeakness(args) {
     sandstorm: 'Sandstorm damage', tox: 'Toxic', trapped: 'Trapping',
   };
 
-  for (const type of Dex.types.names()) {
-    const notImmune = Dex.getImmunity(type, types);
+  for (const type of dex.types.names()) {
+    const notImmune = dex.getImmunity(type, types);
     if (notImmune || isInverse) {
       let typeMod = (!notImmune && isInverse) ? 1 : 0;
-      typeMod += (isInverse ? -1 : 1) * Dex.getEffectiveness(type, types);
+      typeMod += (isInverse ? -1 : 1) * dex.getEffectiveness(type, types);
       if (typeMod === 1) weaknesses.push(type);
       else if (typeMod === 2) weaknesses.push(bold(type) + yellow(' (4x)'));
       else if (typeMod >= 3) weaknesses.push(bold(type) + red(' (8x)'));
@@ -104,13 +175,15 @@ function cmdWeakness(args) {
   }
 
   for (const status in statuses) {
-    if (!Dex.getImmunity(status, types)) {
+    if (!dex.getImmunity(status, types)) {
       immunities.push(dim(statuses[status]));
     }
   }
 
-  const title = isInverse ? `${label} [Inverse]` : label;
-  console.log(`\n${bold(title)}`);
+  const genLabel = dex !== Dex ? dim(` [${dex.currentMod}]`) : '';
+  const ignLabel = isSpecies ? dim(' (ignoring abilities)') : '';
+  const invLabel = isInverse ? ' [Inverse]' : '';
+  console.log(`\n${bold(label)}${ignLabel}${genLabel}${invLabel}`);
   console.log(`${red('Weaknesses')}:   ${weaknesses.join(', ') || dim('None')}`);
   console.log(`${green('Resistances')}: ${resistances.join(', ') || dim('None')}`);
   console.log(`${cyan('Immunities')}:  ${immunities.join(', ') || dim('None')}`);
@@ -118,17 +191,21 @@ function cmdWeakness(args) {
 }
 
 function cmdEffectiveness(args) {
-  const raw = args.join(' ');
-  const parts = raw.split(',').map(s => s.trim());
-  if (parts.length !== 2) {
-    console.log('Usage: eff <move|type>, <pokemon|type>');
+  if (!args.length) {
+    console.log('Usage: eff [gen] <move|type>, <pokemon|type>');
+    return;
+  }
+
+  const { dex, targets } = splitGen(args);
+  if (targets.length !== 2) {
+    console.log('Usage: eff [gen] <move|type>, <pokemon|type>');
     return;
   }
 
   let source, atkName, defender, defName;
 
-  const srcMove = Dex.moves.get(parts[0]);
-  const srcType = Dex.types.get(parts[0]);
+  const srcMove = dex.moves.get(targets[0]);
+  const srcType = dex.types.get(targets[0]);
   if (srcMove.exists) {
     source = srcMove;
     atkName = srcMove.name;
@@ -136,35 +213,24 @@ function cmdEffectiveness(args) {
     source = srcType.name;
     atkName = srcType.name;
   } else {
-    console.error(`'${parts[0]}' is not a recognized move or type.`);
+    console.error(`'${targets[0]}' is not a recognized move or type.`);
     return;
   }
 
-  const defSpecies = Dex.species.get(parts[1]);
-  const defType = Dex.types.get(parts[1]);
+  const defSpecies = dex.species.get(targets[1]);
+  const defType = dex.types.get(targets[1]);
   if (defSpecies.exists) {
     defender = defSpecies;
-    defName = `${defSpecies.name} (ignoring abilities)`;
+    defName = `${defSpecies.name} (not counting abilities)`;
   } else if (defType.exists) {
     defender = { types: [defType.name] };
     defName = defType.name;
   } else {
-    console.error(`'${parts[1]}' is not a recognized Pokémon or type.`);
+    console.error(`'${targets[1]}' is not a recognized Pokemon or type.`);
     return;
   }
 
-  let factor = 0;
-  if (Dex.getImmunity(source, defender)) {
-    let totalTypeMod = 0;
-    const isStatus = source.effectType === 'Move' && source.category === 'Status';
-    const hasNoPower = source.effectType === 'Move' && !source.basePower && !source.basePowerCallback;
-    if (!isStatus && !hasNoPower) {
-      for (const type of defender.types) {
-        totalTypeMod += Dex.getEffectiveness(source, type);
-      }
-    }
-    factor = 2 ** totalTypeMod;
-  }
+  const factor = calcTypeEff(dex, source, defender.types);
 
   let factorStr;
   if (factor === 0) factorStr = cyan('0x (immune)');
@@ -172,49 +238,64 @@ function cmdEffectiveness(args) {
   else if (factor < 1) factorStr = green(`${factor}x`);
   else factorStr = `${factor}x`;
 
-  console.log(`\n${bold(atkName)} → ${bold(defName)}: ${factorStr}\n`);
+  const genLabel = dex !== Dex ? dim(` [${dex.currentMod}]`) : '';
+  console.log(`\n${bold(atkName)} → ${bold(defName)}${genLabel}: ${factorStr}`);
+
+  if (source.id === 'thousandarrows' && defender.types.includes('Flying')) {
+    console.log(dim('  (Thousand Arrows is 1x on the first hit against Flying types)'));
+  }
+
+  console.log();
 }
 
 function cmdCoverage(args) {
   if (!args.length) {
-    console.log('Usage: coverage <move1[,move2,move3,move4]>');
+    console.log('Usage: coverage [gen] <move1[,move2,move3,move4]>');
     return;
   }
 
-  const raw = args.join(' ');
-  const parts = raw.split(/[,+]/).map(s => s.trim()).filter(Boolean);
+  const { dex, targets } = splitGen(args);
 
-  if (parts.length > 4) {
+  if (targets.length > 4) {
     console.error('Specify a maximum of 4 moves or types.');
     return;
   }
 
   const sources = [];
   const bestCoverage = {};
-  for (const type of Dex.types.names()) bestCoverage[type] = -5;
+  for (const type of dex.types.names()) bestCoverage[type] = -5;
 
-  for (const arg of parts) {
-    const argType = arg.charAt(0).toUpperCase() + arg.slice(1);
-    if (Dex.types.isName(argType)) {
+  for (const arg of targets) {
+    const argType = arg.charAt(0).toUpperCase() + arg.slice(1).toLowerCase();
+    if (dex.types.isName(argType)) {
       sources.push(argType);
       for (const type in bestCoverage) {
-        if (!Dex.getImmunity(argType, type)) continue;
-        const eff = Dex.getEffectiveness(argType, type);
+        if (!dex.getImmunity(argType, type)) continue;
+        const eff = dex.getEffectiveness(argType, type);
         if (eff > bestCoverage[type]) bestCoverage[type] = eff;
       }
       continue;
     }
 
-    const move = Dex.moves.get(arg);
+    const move = dex.moves.get(arg);
     if (!move.exists) {
       console.error(`Type or move '${arg}' not found.`);
       return;
     }
+    if (move.gen > dex.gen) {
+      console.error(`Move '${move.name}' is not available in ${dex.currentMod}.`);
+      return;
+    }
     if (!move.basePower && !move.basePowerCallback) continue;
+    if (move.id === 'struggle') continue;
     sources.push(move.name);
     for (const type in bestCoverage) {
-      if (!Dex.getImmunity(move.type, type) && !move.ignoreImmunity) continue;
-      const eff = Dex.getEffectiveness(move.type, type);
+      const immune = dex.getImmunity(move.type, type);
+      const ignoreImm = move.ignoreImmunity && (move.ignoreImmunity === true || move.ignoreImmunity[move.type]);
+      if (!immune && !ignoreImm) continue;
+      const baseMod = dex.getEffectiveness(move, type);
+      const moveMod = move.onEffectiveness?.call({ dex }, baseMod, null, type, move);
+      const eff = typeof moveMod === 'number' ? moveMod : baseMod;
       if (eff > bestCoverage[type]) bestCoverage[type] = eff;
     }
   }
@@ -237,7 +318,8 @@ function cmdCoverage(args) {
     else neutral.push(type);
   }
 
-  console.log(`\n${bold('Coverage for ' + sources.join(' + '))}:`);
+  const genLabel = dex !== Dex ? dim(` [${dex.currentMod}]`) : '';
+  console.log(`\n${bold('Coverage for ' + sources.join(' + '))}${genLabel}:`);
   console.log(`${red('Super Effective')}: ${superEff.join(', ') || dim('None')}`);
   console.log(`${WHITE}Neutral${R}:         ${neutral.join(', ') || dim('None')}`);
   console.log(`${green('Resisted')}:        ${resists.join(', ') || dim('None')}`);
@@ -247,17 +329,33 @@ function cmdCoverage(args) {
 
 function cmdData(args) {
   if (!args.length) {
-    console.log('Usage: data <pokemon|move|item|ability>');
+    console.log('Usage: data [gen] <pokemon|move|item|ability>');
     return;
   }
 
-  const target = args.join(' ').trim();
-  const results = Dex.dataSearch(target);
+  const { dex, targets } = splitGen(args);
+  let target = targets.join(', ').trim();
+
+  if (!target) {
+    console.log('Usage: data [gen] <pokemon|move|item|ability>');
+    return;
+  }
+
+  // dex number lookup: "data 248" -> Tyranitar
+  const targetNum = parseInt(target);
+  if (!isNaN(targetNum) && String(targetNum) === target.trim()) {
+    const found = Dex.species.all().find(s => s.num === targetNum);
+    if (found) target = found.baseSpecies;
+  }
+
+  const results = dex.dataSearch(target);
 
   if (!results || results.length === 0) {
-    console.error(`'${target}' doesn't match any Pokémon, item, move, ability, or nature.`);
+    console.error(`'${target}' doesn't match any Pokemon, item, move, ability, or nature${dex !== Dex ? ' in ' + dex.currentMod : ''}.`);
     return;
   }
+
+  const genLabel = dex !== Dex ? dim(` [${dex.currentMod}]`) : '';
 
   for (const result of results) {
     if (result.isInexact) {
@@ -265,41 +363,44 @@ function cmdData(args) {
     }
     switch (result.searchType) {
     case 'pokemon': {
-      const p = Dex.species.get(result.name);
+      const p = dex.species.get(result.name);
       const stats = p.baseStats;
       const bst = Object.values(stats).reduce((a, b) => a + b, 0);
-      console.log(`\n${bold(p.name)} ${dim(`#${p.num}`)}`);
+      console.log(`\n${bold(p.name)} ${dim(`#${p.num}`)}${genLabel}`);
       console.log(`Type:       ${p.types.join(' / ')}`);
       console.log(`Abilities:  ${p.abilities[0]}${p.abilities[1] ? ' | ' + p.abilities[1] : ''}${p.abilities.H ? ' | ' + dim(p.abilities.H + ' (H)') : ''}`);
       console.log(`Stats:      HP ${stats.hp} | Atk ${stats.atk} | Def ${stats.def} | SpA ${stats.spa} | SpD ${stats.spd} | Spe ${stats.spe}  ${dim('(BST ' + bst + ')')}`);
       if (p.tier) console.log(`Tier:       ${p.tier}`);
-      if (p.prevo) console.log(`Pre-evo:    ${p.prevo}`);
-      if (p.evos?.length) console.log(`Evolves→:   ${p.evos.join(', ')}`);
+      if (p.prevo && Dex.species.get(p.prevo).gen <= dex.gen) console.log(`Pre-evo:    ${p.prevo}`);
+      if (p.evos?.length) {
+        const evos = p.evos.filter(e => Dex.species.get(e).gen <= dex.gen);
+        if (evos.length) console.log(`Evolves:    ${evos.join(', ')}`);
+      }
       if (p.eggGroups?.length) console.log(`Egg Groups: ${p.eggGroups.join(', ')}`);
       console.log();
       break;
     }
     case 'move': {
-      const m = Dex.moves.get(result.name);
-      const bp = m.basePower || (m.basePowerCallback ? '(variable)' : '—');
-      const acc = m.accuracy === true ? '—' : m.accuracy;
-      console.log(`\n${bold(m.name)}`);
+      const m = dex.moves.get(result.name);
+      const bp = m.basePower || (m.basePowerCallback ? '(variable)' : '-');
+      const acc = m.accuracy === true ? '-' : m.accuracy;
+      console.log(`\n${bold(m.name)}${genLabel}`);
       console.log(`Type: ${m.type} | Cat: ${m.category} | BP: ${bp} | Acc: ${acc} | PP: ${m.pp}`);
       if (m.desc || m.shortDesc) console.log(stripHtml(m.desc || m.shortDesc));
       console.log();
       break;
     }
     case 'item': {
-      const item = Dex.items.get(result.name);
-      console.log(`\n${bold(item.name)}`);
+      const item = dex.items.get(result.name);
+      console.log(`\n${bold(item.name)}${genLabel}`);
       if (item.desc || item.shortDesc) console.log(stripHtml(item.desc || item.shortDesc));
       if (item.fling) console.log(`Fling BP: ${item.fling.basePower}`);
       console.log();
       break;
     }
     case 'ability': {
-      const ab = Dex.abilities.get(result.name);
-      console.log(`\n${bold(ab.name)}`);
+      const ab = dex.abilities.get(result.name);
+      console.log(`\n${bold(ab.name)}${genLabel}`);
       if (ab.desc || ab.shortDesc) console.log(stripHtml(ab.desc || ab.shortDesc));
       console.log();
       break;
@@ -310,7 +411,7 @@ function cmdData(args) {
       if (nat.plus) {
         console.log(`+10% ${Dex.stats.names[nat.plus]}, -10% ${Dex.stats.names[nat.minus]}`);
       } else {
-        console.log('No stat effect');
+        console.log('No effect.');
       }
       console.log();
       break;
@@ -633,31 +734,35 @@ function cmdRandomMove(args) {
 
 function showHelp() {
   console.log(`
-${blue('weakness')} <pokemon|type[,type2]> [inverse]
+${blue('weakness')} [gen] <pokemon|type[,type2]> [inverse]
   Weaknesses, resistances, and immunities.
   e.g. weakness charizard
        weakness fire,flying
        weakness water inverse
+       weakness gen6, charizard
 
-${blue('eff')} <move|type>, <pokemon|type>
+${blue('eff')} [gen] <move|type>, <pokemon|type>
   Type effectiveness of a move or type against a defender.
   e.g. eff earthquake, charizard
-       eff water, fire
+       eff freeze-dry, vaporeon
+       eff gen4, water, fire
 
-${blue('data')} <name>
-  Pokédex entry for a Pokémon, move, item, ability, or nature.
+${blue('data')} [gen] <name|dex number>
+  Pokedex entry for a Pokemon, move, item, ability, or nature.
   e.g. data garchomp
+       data 248
        data earthquake
-       data choice band
+       data gen6, choice band
 
-${blue('coverage')} <move1[,move2,move3,move4]>
+${blue('coverage')} [gen] <move1[,move2,move3,move4]>
   Best type coverage for a set of up to 4 moves or types.
   e.g. coverage surf,thunderbolt,icebeam,earthquake
+       coverage gen5, freeze-dry, flying press
 
-${blue('learn')} <pokemon>, <move>[, move2, ...]
+${blue('learn')} [gen] <pokemon>, <move>[, move2, ...]
   Check if a pokemon can learn a move (or combination), and how.
   e.g. learn pikachu, thunderbolt
-       learn togekiss, nasty plot, air slash
+       learn gen6, togekiss, nasty plot
 
 ${blue('statcalc')} [level] [pokemon or base stat] [stat] [ivs] [evs] [nature] [modifier]
   Calculate the final value of a stat.
