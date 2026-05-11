@@ -26,6 +26,19 @@ const yellow = (s: string): string => `${YELLOW}${s}${R}`;
 const cyan  = (s: string): string => `${CYAN}${s}${R}`;
 const blue  = (s: string): string => `${BLUE}${s}${R}`;
 
+const KAOMOJI = [
+  '(^w^)7',
+  '(>﹏<)ゝ',
+  'ᓚ₍⑅^..^₎',
+  '/(-3-)',
+  "_( '/3\\' )_",
+  '<❪❪꒰˶ᵔ ᵕ ᵔ˶꒱❫❫>',
+  '@(@~@)@',
+  "++(' _ ')++",
+  '(\\/) ( ;,,;)(\\/)',
+];
+const randKaomoji = (): string => KAOMOJI[Math.floor(Math.random() * KAOMOJI.length)];
+
 const GEN_ALIASES: Record<string, string> = {
   rby: 'gen1', rb: 'gen1',
   gsc: 'gen2', gs: 'gen2',
@@ -2140,6 +2153,76 @@ function cmdRandomMove(args: string[]): void {
   console.log('\n' + lines.join('\n') + '\n');
 }
 
+function cmdRandomQuote(): void {
+  const QUOTES: { text: string; by: string }[] = [
+    {
+      text: "Together you and your Pokémon overcame all the challenges you faced, however difficult. It means that you've triumphed over any personal weaknesses, too. The power you learned, I feel it emanating from you.",
+      by: "Cynthia",
+    },
+    {
+      text: "The circumstances of one's birth are irrelevant. It's what you chose to do with the gift of life that determines who you are.",
+      by: "Mewtwo — Pokémon: The First Movie",
+    },
+    {
+      text: "Strong Pokémon. Weak Pokémon. That is only the selfish perception of people. Truly skilled trainers should try to win with their favorites.",
+      by: "Karen — Indigo Elite Four",
+    },
+    {
+      text: "It's one thing to enjoy leisurely battles, but real battles can be a severe trial. Truly strong Trainers sometimes must be prepared to choose Pokémon that can win rather than their favorite Pokémon.",
+      by: "Gentleman — Gen III/ORAS",
+    },
+    {
+      text: "There are bad ways to win — and good ways to lose. What's interesting and troubling is that it's not always clear which is which. A flipped coin doesn't always land heads or tails. Sometimes it may never land at all...",
+      by: "Grimsley — Pokémon Black/White",
+    },
+    {
+      text: "A beautiful loss is still a loss, and an ugly win is still a win!",
+      by: "",
+    },
+    {
+      text: "I'll use my frying pan as a drying pan!",
+      by: "Brock — Pokémon anime",
+    },
+    {
+      text: "Heheh! This gym is great! It is full of women!",
+      by: "Old man outside Erika's Gym",
+    },
+    {
+      text: "Y'know what? Ice is both extremely hard and terribly fragile at the same time. You know what that means? Depending on which Pokémon you choose and what moves they use, I could be your most challenging opponent yet or I could be a total pushover. But that's all right. That's how it should be! Anyway, enough of my rambling! Let's get this show on the road!",
+      by: "Wulfric — Pokémon X/Y",
+    },
+    {
+      text: "The important thing is not how long you live, it's what you accomplish with your life. When I live, I want to shine. I want to prove that I exist. If I could do something really important… that would definitely carry on into the future.",
+      by: "Grovyle — Pokémon Mystery Dungeon",
+    },
+    {
+      text: "Our boss went to jack a submarine. Where did he go? Ha, I'd never tell you such an important secret!\nOur boss went to Slateport. Why did he go there? Ha, I'd never tell you such an important secret!",
+      by: "Team Aqua Grunts — Pokémon Ruby/Sapphire",
+    },
+    {
+      text: "We do have a lot in common. The same earth, the same air, the same sky. Maybe if we started looking at what's the same instead of always looking at what's different... well, who knows?",
+      by: "Meowth — Pokémon: The First Movie",
+    },
+    {
+      text: "It's not by rejecting different ideas, but by accepting different ideas that the world creates a chemical reaction. This is truly the formula for changing the world.",
+      by: "N — Pokémon Black/White",
+    },
+    {
+      text: "You wanna know what I do when some machine messes up? The first thing I do is give it a nice hard smack! I mean, most of the time I smash it to pieces, but hey, what can you do? Now let's see if I can't fix you!",
+      by: "Guzma — Pokémon Sun/Moon",
+    },
+    {
+      text: "If I'm wearing a bikini... where do I put my Poké Balls? Teehee... woman's secret!",
+      by: "Swimmer Kylie — Pokémon Ruby/Sapphire",
+    },
+  ];
+
+  const q = QUOTES[Math.floor(Math.random() * QUOTES.length)];
+  console.log(`\n"${q.text}"`);
+  if (q.by) console.log(dim(`  — ${q.by}`));
+  console.log();
+}
+
 function showHelp(): void {
   console.log(`
 ${blue('weakness')} [gen] <pokemon|type[,type2]> [inverse]
@@ -2223,6 +2306,9 @@ ${blue('randommove')} [count] [filters]  Alias: rm
        randommove water, special
        randommove 3 bp > 90, contact
 
+${blue('randomquote')}  Alias: rq
+  Print a random Pokémon quote.
+
 ${blue('help')}  Show this help.
 ${blue('exit')}  Exit the program.  ${dim('(REPL mode only)')}
 `);
@@ -2282,6 +2368,10 @@ function dispatch(cmd: string, args: string[]): void {
   case 'rollmove':
     cmdRandomMove(args);
     break;
+  case 'randomquote':
+  case 'rq':
+    cmdRandomQuote();
+    break;
   case 'help':
   case '--help':
   case '-h':
@@ -2300,19 +2390,7 @@ if (argv.length > 0) {
   dispatch(cmd, rest);
 } else {
   // repl mode: stays open and reads commands line by line
-  const STARTUP_ARTS = [
-    '(^w^)7',
-    '(>﹏<)ゝ',
-    'ᓚ₍⑅^..^₎',
-    '/(-3-)',
-    "_( '/3\\' )_",
-    '<❪❪꒰˶ᵔ ᵕ ᵔ˶꒱❫❫>',
-    '@(@~@)@',
-    "++(' _ ')++",
-    '(\\/) ( ;,,;)(\\/)',
-  ];
-  const art = STARTUP_ARTS[Math.floor(Math.random() * STARTUP_ARTS.length)];
-  console.log(`${bold('pokescope')} ${art} type ${blue('help')} to see available commands, ${blue('exit')} to quit.\n`);
+  console.log(`${bold('pokescope')} ${randKaomoji()} type ${blue('help')} to see available commands, ${blue('exit')} to quit.\n`);
 
   const rl = readline.createInterface({
     input: process.stdin,
@@ -2326,6 +2404,7 @@ if (argv.length > 0) {
     const trimmed = line.trim();
     if (!trimmed) { rl.prompt(); return; }
     if (trimmed === 'exit' || trimmed === 'quit') {
+      console.log(`Goodbye! ${randKaomoji()}`);
       process.exit(0);
     }
     const [cmd] = trimmed.split(/\s+/);
