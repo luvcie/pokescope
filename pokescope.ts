@@ -39,6 +39,60 @@ const GEN_ALIASES: Record<string, string> = {
 };
 const GEN_PATTERN = /^(gen[1-9]|rby|rb|gsc|gs|adv|rs|dpp|dp|bw2?|oras|xy|usum|sm|ss|sv)$/;
 
+// splits a filter string into tokens, using commas when present,
+// otherwise splits on spaces with smart merging for multi-word patterns
+function splitFilterTokens(raw: string): string[] {
+  if (raw.includes(',')) return raw.split(',').map(s => s.trim()).filter(Boolean);
+  const words = raw.split(/\s+/).filter(Boolean);
+  const tokens: string[] = [];
+  let i = 0;
+  while (i < words.length) {
+    const w = words[i].toLowerCase();
+    const next = words[i + 1] ?? '';
+    const nextlc = next.toLowerCase();
+    const after = words[i + 2] ?? '';
+    // stat inequality: "spe > 100", "100 < spe"
+    if (next && /^(>=|<=|!=|>|<|=)$/.test(next) && after) {
+      tokens.push(words[i] + ' ' + next + ' ' + after);
+      i += 3;
+      continue;
+    }
+    // sort: "spe asc", "bst desc"
+    if (nextlc === 'asc' || nextlc === 'desc') {
+      tokens.push(words[i] + ' ' + next);
+      i += 2;
+      continue;
+    }
+    // resists/weak <target>
+    if ((w === 'resists' || w === 'resist' || w === 'weak' || w === 'weakness') && next) {
+      tokens.push(words[i] + ' ' + next);
+      i += 2;
+      continue;
+    }
+    // boosts/lowers/zboosts <stat>
+    if ((w === 'boosts' || w === 'boost' || w === 'lowers' || w === 'lower' || w === 'zboosts' || w === 'zboost') && next) {
+      tokens.push(words[i] + ' ' + next);
+      i += 2;
+      continue;
+    }
+    // egg group <name>
+    if (w === 'egg' && nextlc === 'group' && after) {
+      tokens.push(words[i] + ' ' + next + ' ' + after);
+      i += 3;
+      continue;
+    }
+    // fully evolved
+    if (w === 'fully' && nextlc === 'evolved') {
+      tokens.push(words[i] + ' ' + next);
+      i += 2;
+      continue;
+    }
+    tokens.push(words[i]);
+    i++;
+  }
+  return tokens;
+}
+
 // splits gen prefix out of comma/slash-separated args, returns gen-specific dex and remaining targets
 function splitGen(args: string[]): { dex: ModdedDex; targets: string[] } {
   let raw = args.join(' ');
@@ -695,7 +749,7 @@ function cmdDexsearch(args: string[]): void {
     gens: {}, moves: {}, resists: {}, weak: {}, formes: {}, stats: {}, flags: {}, skip: false,
   });
 
-  const commaGroups = rest.split(',').map(s => s.trim()).filter(Boolean);
+  const commaGroups = splitFilterTokens(rest);
 
   for (const commaGroup of commaGroups) {
     const alternatives = commaGroup.split('|').map(s => s.trim()).filter(Boolean).slice(0, 3);
@@ -1404,7 +1458,7 @@ function cmdMovesearch(args: string[]): void {
     boosts: {}, lowers: {}, zboosts: {}, status: {}, volatileStatus: {}, other: {}, skip: false,
   });
 
-  for (const commaGroup of rest.split(',').map(s => s.trim()).filter(Boolean)) {
+  for (const commaGroup of splitFilterTokens(rest)) {
     const alternatives = commaGroup.split('|').map(s => s.trim()).filter(Boolean).slice(0, 3);
     const groups: MoveSearchGroup[] = alternatives.map(() => makeGroup());
 
