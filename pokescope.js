@@ -23,7 +23,18 @@ const yellow = s => `${YELLOW}${s}${R}`;
 const cyan = s => `${CYAN}${s}${R}`;
 const blue = s => `${BLUE}${s}${R}`;
 
-const GEN_ALIASES = { rby: 'gen1', gsc: 'gen2', adv: 'gen3', dpp: 'gen4', bw: 'gen5', bw2: 'gen5', oras: 'gen6', usum: 'gen7', ss: 'gen8', sv: 'gen9' };
+const GEN_ALIASES = {
+  rby: 'gen1', rb: 'gen1',
+  gsc: 'gen2', gs: 'gen2',
+  adv: 'gen3', rs: 'gen3',
+  dpp: 'gen4', dp: 'gen4',
+  bw: 'gen5', bw2: 'gen5',
+  oras: 'gen6', xy: 'gen6',
+  usum: 'gen7', sm: 'gen7',
+  ss: 'gen8',
+  sv: 'gen9',
+};
+const GEN_PATTERN = /^(gen[1-9]|rby|rb|gsc|gs|adv|rs|dpp|dp|bw2?|oras|xy|usum|sm|ss|sv)$/;
 
 // splits gen prefix out of comma/slash-separated args, returns gen-specific dex and remaining targets
 function splitGen(args) {
@@ -32,7 +43,7 @@ function splitGen(args) {
   const targets = [];
   for (const part of parts) {
     const id = part.toLowerCase().replace(/\s+/g, '');
-    const m = id.match(/^(gen[1-9]|rby|gsc|adv|dpp|bw2?|oras|usum|ss|sv)$/);
+    const m = id.match(GEN_PATTERN);
     if (m) {
       dex = Dex.mod(GEN_ALIASES[m[1]] || m[1]);
     } else {
@@ -468,11 +479,10 @@ function cmdLearn(args) {
   let rest = raw;
 
   // check for gen prefix like "gen6, ..." or "gen6 ..."
-  const genMatch = raw.match(/^(gen[1-9]|rby|gsc|adv|dpp|bw2?|oras|usum|ss|sv)\s*,?\s*/i);
+  const genMatch = raw.match(/^(gen[1-9]|rby|rb|gsc|gs|adv|rs|dpp|dp|bw2?|oras|xy|usum|sm|ss|sv)\s*,?\s*/i);
   if (genMatch) {
-    const genAliases = { rby: 'gen1', gsc: 'gen2', adv: 'gen3', dpp: 'gen4', bw: 'gen5', bw2: 'gen5', oras: 'gen6', usum: 'gen7', ss: 'gen8', sv: 'gen9' };
     const rawGen = genMatch[1].toLowerCase();
-    genMod = genAliases[rawGen] || rawGen;
+    genMod = GEN_ALIASES[rawGen] || rawGen;
     rest = raw.slice(genMatch[0].length);
   }
 
