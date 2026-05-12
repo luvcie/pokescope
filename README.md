@@ -4,7 +4,7 @@ I liked the lookup commands in [Pokemon Showdown](https://github.com/smogon/poke
 
 It's made in typescript because it uses the [`pokemon-showdown`](https://www.npmjs.com/package/pokemon-showdown) npm package directly, all the data (type charts, learnsets, tier info, move descriptions) comes from there, so updating the dependency is enough to get new Pokemon, tier changes, etc that pokemon showdown might add in the future. 
 
-Compiled to a self-contained binary with [Bun](https://bun.sh).
+Built with [Bun](https://bun.sh). The `bun run build` path produces a self-contained binary for local use. The Nix package ships the source plus a small wrapper that invokes `bun run`, because `bun --compile` bakes build-time paths into the binary, and Nix builds inside a temporary sandbox directory that no longer exists at runtime, so those baked paths would point nowhere.
 
 Also thanks to my fren William for helping me choose the name. :)
 
