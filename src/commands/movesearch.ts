@@ -63,8 +63,7 @@ export function cmdMovesearch(args: string[], poolOnly = false): Move[] | void {
   };
 
   const raw = args.join(' ');
-  const { genMod: genModOrNull, rest } = parseGenPrefix(raw);
-  const genMod = genModOrNull ?? 'gen9';
+  const { genMod = 'gen9', rest } = parseGenPrefix(raw);
   const dex = Dex.mod(genMod);
   const validator = TeamValidator.get(`${genMod}ou`);
 
