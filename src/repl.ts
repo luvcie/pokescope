@@ -1,4 +1,5 @@
 import * as readline from 'readline';
+import { Dex } from 'pokemon-showdown';
 import { bold, cyan, blue, B, CYAN, R } from './ansi';
 import { showHelp } from './help';
 import { cmdWeakness } from './commands/weakness';
@@ -28,10 +29,26 @@ const COMMANDS = [
   'help', 'exit', 'quit',
 ];
 
+let speciesCache: string[] | null = null;
+function getSpecies(): string[] {
+  if (!speciesCache) {
+    speciesCache = Dex.species.all()
+      .filter((s) => s.exists && s.num > 0 && s.isNonstandard !== 'Custom' && s.isNonstandard !== 'LGPE')
+      .map((s) => s.name.toLowerCase());
+  }
+  return speciesCache;
+}
+
 function completer(line: string): [string[], string] {
-  if (line.includes(' ')) return [[], line];
-  const hits = COMMANDS.filter((c) => c.startsWith(line));
-  return [hits, line];
+  if (!line.includes(' ')) {
+    const hits = COMMANDS.filter((c) => c.startsWith(line));
+    return [hits, line];
+  }
+  const sepIdx = Math.max(line.lastIndexOf(','), line.lastIndexOf('/'), line.indexOf(' '));
+  const word = line.slice(sepIdx + 1).replace(/^\s+/, '').toLowerCase();
+  if (!word) return [[], line];
+  const hits = getSpecies().filter((s) => s.startsWith(word));
+  return [hits, word];
 }
 
 const KAOMOJI = [
