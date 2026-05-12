@@ -10,11 +10,7 @@ Runs on [Bun](https://bun.sh), which executes TypeScript directly with no build 
 
 Also thanks to my fren William for helping me choose the name. :)
 
-**Nix:**
-
-```
-nix run github:luvcie/pokescope
-```
+## Install
 
 **From source:**
 ```
@@ -22,6 +18,26 @@ git clone https://github.com/luvcie/pokescope
 cd pokescope
 bun install
 bun link
+```
+
+**Nix:**
+
+Run temporarily, without installing:
+```
+nix run github:luvcie/pokescope
+```
+
+To install permanently:
+```
+nix profile install github:luvcie/pokescope
+```
+
+Or add to your flake:
+```nix
+inputs.pokescope.url = "github:luvcie/pokescope";
+
+# then in environment.systemPackages / home.packages:
+inputs.pokescope.packages.${system}.default
 ```
 
 ## Usage
