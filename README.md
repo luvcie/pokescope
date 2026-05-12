@@ -2,9 +2,11 @@
 
 I liked the lookup commands in [Pokemon Showdown](https://github.com/smogon/pokemon-showdown)'s chat and wanted them in my terminal, mainly for using while I play PokeMMO.
 
-It's made in typescript because it uses the [`pokemon-showdown`](https://www.npmjs.com/package/pokemon-showdown) npm package directly, all the data (type charts, learnsets, tier info, move descriptions) comes from there, so updating the dependency is enough to get new Pokemon, tier changes, etc that pokemon showdown might add in the future. 
+It's made in typescript because it uses the [`pokemon-showdown`](https://www.npmjs.com/package/pokemon-showdown) npm package directly, all the data (type charts, learnsets, tier info, move descriptions) comes from there, so updating the dependency is enough to get new Pokemon, tier changes, etc that pokemon showdown might add in the future.
 
-Built with [Bun](https://bun.sh). The `bun run build` path produces a self-contained binary for local use. The Nix package ships the source plus a small wrapper that invokes `bun run`, because `bun --compile` bakes build-time paths into the binary, and Nix builds inside a temporary sandbox directory that no longer exists at runtime, so those baked paths would point nowhere.
+Why not Go or Rust? Because I don't want to rewrite everything that's already in the pokemon-showdown package.
+
+Runs on [Bun](https://bun.sh), which executes TypeScript directly with no build step. The Nix package ships the source and a small wrapper that invokes `bun run`.
 
 Also thanks to my fren William for helping me choose the name. :)
 
@@ -19,7 +21,7 @@ nix run github:luvcie/pokescope
 git clone https://github.com/luvcie/pokescope
 cd pokescope
 bun install
-bun run build
+bun link
 ```
 
 ## Usage

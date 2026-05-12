@@ -1,3 +1,3 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 'use strict';
 import './src/repl';
