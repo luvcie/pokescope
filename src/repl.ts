@@ -12,6 +12,28 @@ import { cmdItemsearch } from './commands/itemsearch';
 import { cmdStatcalc } from './commands/statcalc';
 import { cmdRandomPokemon, cmdRandomMove, cmdRandomQuote } from './commands/random';
 
+const COMMANDS = [
+  'weakness', 'weak', 'weaknesses', 'resist',
+  'eff', 'effectiveness', 'type', 'matchup',
+  'data', 'dex', 'dt',
+  'coverage', 'cover',
+  'learn', 'learnset',
+  'dexsearch', 'ds', 'nds',
+  'movesearch', 'ms',
+  'itemsearch', 'is',
+  'statcalc',
+  'randompokemon', 'randpoke', 'rollpokemon', 'rp',
+  'randommove', 'randmove', 'rollmove', 'rm',
+  'randomquote', 'rq',
+  'help', 'exit', 'quit',
+];
+
+function completer(line: string): [string[], string] {
+  if (line.includes(' ')) return [[], line];
+  const hits = COMMANDS.filter((c) => c.startsWith(line));
+  return [hits, line];
+}
+
 const KAOMOJI = [
   '(^w^)7',
   '(>﹏<)ゝ',
@@ -107,6 +129,7 @@ if (argv.length > 0) {
     input: process.stdin,
     output: process.stdout,
     prompt: `${B}${CYAN}›${R} `,
+    completer,
   });
 
   rl.prompt();
