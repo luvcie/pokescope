@@ -42,6 +42,7 @@
                 !(type == "directory" && baseNameOf name == "node_modules");
             };
 
+            nativeBuildInputs = [ pkgs.makeWrapper ];
             dontBuild = true;
 
             installPhase = ''
@@ -53,11 +54,8 @@
               mkdir -p $out/share/pokescope/node_modules
               cp -r ${nodeDeps}/. $out/share/pokescope/node_modules/
 
-              cat > $out/bin/pokescope <<EOF
-              #!/bin/sh
-              exec ${pkgs.bun}/bin/bun run $out/share/pokescope/pokescope.ts "\$@"
-              EOF
-              chmod +x $out/bin/pokescope
+              makeWrapper ${pkgs.bun}/bin/bun $out/bin/pokescope \
+                --add-flags "run $out/share/pokescope/pokescope.ts"
             '';
 
             meta = with pkgs.lib; {
