@@ -5,7 +5,14 @@
 
   outputs = { self, nixpkgs }:
     let
-      systems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
+      # bun install produces platform-specific node_modules, so the FOD output
+      # hash differs per system. Add an entry here for each system we've
+      # verified.
+      nodeDepsHashes = {
+        "x86_64-linux" = "sha256-6FKUL9QEshrLTRifp5LxWBq4drnRJYZeZ2qkEsyYtos=";
+        "aarch64-darwin" = "sha256-sTpRoCQp67oH7hUgbvhAV/bG7PX+m11Ec6taLAO/zio=";
+      };
+      systems = builtins.attrNames nodeDepsHashes;
       forAllSystems = nixpkgs.lib.genAttrs systems;
     in {
       packages = forAllSystems (system:
@@ -30,7 +37,7 @@
             dontFixup = true;
             outputHashAlgo = "sha256";
             outputHashMode = "recursive";
-            outputHash = "sha256-6FKUL9QEshrLTRifp5LxWBq4drnRJYZeZ2qkEsyYtos=";
+            outputHash = nodeDepsHashes.${system};
           };
         in {
           default = pkgs.stdenv.mkDerivation {
