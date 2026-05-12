@@ -8,6 +8,8 @@ Why not Go, Rust, Gleam, etc.? Because pokemon-showdown isn't just data on pokem
 
 Runs on [Bun](https://bun.sh), which executes TypeScript directly with no build step. The Nix package ships the source and a small wrapper that invokes `bun run`.
 
+It's also pretty heavy (a fresh install pulls around 1GB of node_modules) because `pokemon-showdown` brings a lot of stuff pokescope doesn't actually use (full battle simulator, server/chat code, sqlite3, etc.). At some point I might switch to [`@pkmn/dex`](https://www.npmjs.com/package/@pkmn/dex) and [`@pkmn/sim`](https://www.npmjs.com/package/@pkmn/sim), which are slimmer extractions of the same logic maintained by [scheibo](https://github.com/scheibo), a pokemon-showdown core developer. On the Nix side I might also switch to [`bun2nix`](https://github.com/nix-community/bun2nix) for cleaner cross-platform reproducibility. For now it works, so I'm leaving it.
+
 Also thanks to my fren William for helping me choose the name. :)
 
 ## Install
