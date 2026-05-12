@@ -12,39 +12,52 @@
         let
           pkgs = nixpkgs.legacyPackages.${system};
 
-          # Pre-fetch npm deps in a fixed-output derivation so the main build
-          # can run offline inside the Nix sandbox.
-          # To compute the hash: set outputHash = "" and run `nix build`, then
-          # copy the sha256 from the error message.
           nodeDeps = pkgs.stdenv.mkDerivation {
             name = "pokescope-node-modules";
-            src = ./.;
+            src = pkgs.lib.cleanSourceWith {
+              src = ./.;
+              filter = name: type:
+                !(type == "directory" && baseNameOf name == "node_modules");
+            };
             nativeBuildInputs = [ pkgs.bun ];
             buildPhase = ''
               export HOME=$(mktemp -d)
               export BUN_INSTALL_CACHE_DIR=$(mktemp -d)
-              bun install --frozen-lockfile
+              bun install --frozen-lockfile --ignore-scripts
+              rm -rf node_modules/.bin
             '';
             installPhase = "cp -r node_modules $out";
+            dontFixup = true;
             outputHashAlgo = "sha256";
             outputHashMode = "recursive";
-            outputHash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+            outputHash = "sha256-6FKUL9QEshrLTRifp5LxWBq4drnRJYZeZ2qkEsyYtos=";
           };
         in {
           default = pkgs.stdenv.mkDerivation {
             pname = "pokescope";
             version = "0.1.0";
-            src = ./.;
+            src = pkgs.lib.cleanSourceWith {
+              src = ./.;
+              filter = name: type:
+                !(type == "directory" && baseNameOf name == "node_modules");
+            };
 
-            nativeBuildInputs = [ pkgs.bun ];
-
-            buildPhase = ''
-              ln -s ${nodeDeps} node_modules
-              bun build --compile pokescope.ts --outfile pokescope
-            '';
+            dontBuild = true;
 
             installPhase = ''
-              install -Dm755 pokescope $out/bin/pokescope
+              mkdir -p $out/share/pokescope $out/bin
+
+              cp pokescope.ts tsconfig.json $out/share/pokescope/
+              cp -r src $out/share/pokescope/
+
+              mkdir -p $out/share/pokescope/node_modules
+              cp -r ${nodeDeps}/. $out/share/pokescope/node_modules/
+
+              cat > $out/bin/pokescope <<EOF
+              #!/bin/sh
+              exec ${pkgs.bun}/bin/bun run $out/share/pokescope/pokescope.ts "\$@"
+              EOF
+              chmod +x $out/bin/pokescope
             '';
 
             meta = with pkgs.lib; {
