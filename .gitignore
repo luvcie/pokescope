@@ -1,3 +1,5 @@
 node_modules/
 pokescope-bin
 pokescope
+result
+package-lock.json
