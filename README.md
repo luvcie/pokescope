@@ -33,7 +33,7 @@ nix run github:luvcie/pokescope
 
 To install permanently:
 ```
-nix profile install github:luvcie/pokescope
+nix profile add github:luvcie/pokescope
 ```
 
 Or add to your flake:
