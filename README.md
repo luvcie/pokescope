@@ -16,6 +16,8 @@ Also thanks to my fren William for helping me choose the name. :)
 
 ## Install
 
+Works on Linux and macOS (x86_64 and aarch64).
+
 **From source:**
 ```
 git clone https://github.com/luvcie/pokescope
