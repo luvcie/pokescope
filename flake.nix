@@ -1,68 +1,66 @@
 {
   description = "Pokémon Showdown info commands in your terminal";
 
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    systems.url = "github:nix-systems/default";
 
-  outputs = { self, nixpkgs }:
+    bun2nix.url = "github:nix-community/bun2nix?ref=2.1.0";
+    bun2nix.inputs.nixpkgs.follows = "nixpkgs";
+    bun2nix.inputs.systems.follows = "systems";
+  };
+
+  nixConfig = {
+    extra-substituters = [ "https://nix-community.cachix.org" ];
+    extra-trusted-public-keys = [
+      "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="
+    ];
+  };
+
+  outputs = inputs:
     let
-      # bun install produces platform-specific node_modules, so the FOD output
-      # hash differs per system. Add an entry here for each system we've
-      # verified.
-      nodeDepsHashes = {
-        "x86_64-linux" = "sha256-6FKUL9QEshrLTRifp5LxWBq4drnRJYZeZ2qkEsyYtos=";
-        "aarch64-darwin" = "sha256-sTpRoCQp67oH7hUgbvhAV/bG7PX+m11Ec6taLAO/zio=";
-      };
-      systems = builtins.attrNames nodeDepsHashes;
-      forAllSystems = nixpkgs.lib.genAttrs systems;
+      eachSystem = inputs.nixpkgs.lib.genAttrs (import inputs.systems);
+      pkgsFor = eachSystem (system:
+        import inputs.nixpkgs {
+          inherit system;
+          overlays = [ inputs.bun2nix.overlays.default ];
+        });
     in {
-      packages = forAllSystems (system:
-        let
-          pkgs = nixpkgs.legacyPackages.${system};
+      packages = eachSystem (system:
+        let pkgs = pkgsFor.${system}; in {
+          default = pkgs.bun2nix.mkDerivation {
+            packageJson = ./package.json;
 
-          nodeDeps = pkgs.stdenv.mkDerivation {
-            name = "pokescope-node-modules";
             src = pkgs.lib.cleanSourceWith {
               src = ./.;
               filter = name: type:
                 !(type == "directory" && baseNameOf name == "node_modules");
             };
-            nativeBuildInputs = [ pkgs.bun ];
-            buildPhase = ''
-              export HOME=$(mktemp -d)
-              export BUN_INSTALL_CACHE_DIR=$(mktemp -d)
-              bun install --frozen-lockfile --ignore-scripts
-              rm -rf node_modules/.bin
-            '';
-            installPhase = "cp -r node_modules $out";
-            dontFixup = true;
-            outputHashAlgo = "sha256";
-            outputHashMode = "recursive";
-            outputHash = nodeDepsHashes.${system};
-          };
-        in {
-          default = pkgs.stdenv.mkDerivation {
-            pname = "pokescope";
-            version = "0.1.0";
-            src = pkgs.lib.cleanSourceWith {
-              src = ./.;
-              filter = name: type:
-                !(type == "directory" && baseNameOf name == "node_modules");
+
+            bunDeps = pkgs.bun2nix.fetchBunDeps {
+              bunNix = ./bun.nix;
             };
 
             nativeBuildInputs = [ pkgs.makeWrapper ];
-            dontBuild = true;
+
+            dontUseBunBuild = true;
 
             installPhase = ''
+              runHook preInstall
+
+              rm -rf node_modules
+              ${pkgs.bun}/bin/bun install --production --linker=isolated --offline --ignore-scripts
+
               mkdir -p $out/share/pokescope $out/bin
 
               cp pokescope.ts tsconfig.json $out/share/pokescope/
               cp -r src $out/share/pokescope/
-
-              mkdir -p $out/share/pokescope/node_modules
-              cp -r ${nodeDeps}/. $out/share/pokescope/node_modules/
+              cp -r node_modules $out/share/pokescope/
 
               makeWrapper ${pkgs.bun}/bin/bun $out/bin/pokescope \
                 --add-flags "run $out/share/pokescope/pokescope.ts"
+
+              runHook postInstall
             '';
 
             meta = with pkgs.lib; {
@@ -74,7 +72,15 @@
               platforms = platforms.linux ++ platforms.darwin;
             };
           };
-        }
-      );
+        });
+
+      devShells = eachSystem (system:
+        let pkgs = pkgsFor.${system}; in {
+          # bun2nix is in package.json devDependencies, so `bunx bun2nix -o bun.nix`
+          # works after `bun install` without needing the Rust build here.
+          default = pkgs.mkShell {
+            packages = with pkgs; [ bun ];
+          };
+        });
     };
 }
