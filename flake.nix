@@ -44,12 +44,10 @@
             nativeBuildInputs = [ pkgs.makeWrapper ];
 
             dontUseBunBuild = true;
+            bunInstallFlags = [ "--linker=isolated" "--omit=dev" ];
 
             installPhase = ''
               runHook preInstall
-
-              rm -rf node_modules
-              ${pkgs.bun}/bin/bun install --production --linker=isolated --offline --ignore-scripts
 
               mkdir -p $out/share/pokescope $out/bin
 
