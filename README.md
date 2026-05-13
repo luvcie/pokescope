@@ -10,6 +10,8 @@ Runs on [Bun](https://bun.sh), which executes TypeScript directly with no build 
 
 It uses [`@pkmn/sim`](https://www.npmjs.com/package/@pkmn/sim) from [Modular Pokémon Showdown](https://github.com/pkmn), a slimmer extraction of [pokemon showdown](https://github.com/smogon/pokemon-showdown)'s data, simulator, and team validator. Nix builds go through [`bun2nix`](https://github.com/nix-community/bun2nix) for per-package reproducibility.
 
+`@pkmn/sim` is also published much more often than the `pokemon-showdown` npm package (every couple of weeks vs years between releases), so competitive users get tier moves, format changes, and item description updates pretty quickly.
+
 Also thanks to my fren William for helping me choose the name. :)
 
 ## Install
@@ -75,3 +77,13 @@ pokescope dexsearch fire, ou
 All commands support a `[gen]` prefix (e.g. `gen4`, `adv`, `bw`) to query older generations. Type `help` inside the REPL for full usage and examples.
 
 Might add more commands in the future, like the `randomquote` one which is not from pokemon showdown.
+
+## Updating @pkmn/sim
+
+Note to future me:
+
+```
+bun update @pkmn/sim
+bunx bun2nix -o bun.nix
+git add package.json bun.lock bun.nix && git commit -m "chore: bump @pkmn/sim"
+```
