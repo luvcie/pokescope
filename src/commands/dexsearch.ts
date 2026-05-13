@@ -1,5 +1,5 @@
-import { Dex, TeamValidator } from 'pokemon-showdown';
-import type { Species } from 'pokemon-showdown/dist/sim/dex-species';
+import { Dex, TeamValidator } from '@pkmn/sim';
+import type { Species } from '@pkmn/sim';
 import { bold, dim } from '../ansi';
 import { parseGenPrefix } from '../gen';
 import { splitFilterTokens } from '../filter-tokens';

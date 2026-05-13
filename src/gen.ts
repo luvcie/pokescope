@@ -1,5 +1,5 @@
-import { Dex } from 'pokemon-showdown';
-import type { ModdedDex } from 'pokemon-showdown/dist/sim/dex';
+import { Dex } from '@pkmn/sim';
+import type { ModdedDex } from '@pkmn/sim';
 
 export const GEN_ALIASES: Record<string, string> = {
   rby: 'gen1', rb: 'gen1',

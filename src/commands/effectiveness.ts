@@ -1,4 +1,4 @@
-import { Dex } from 'pokemon-showdown';
+import { Dex } from '@pkmn/sim';
 import { bold, dim, red, green, cyan } from '../ansi';
 import { splitGen } from '../gen';
 import { calcTypeEff } from '../type-eff';

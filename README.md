@@ -2,13 +2,15 @@
 
 I liked the lookup commands in [Pokemon Showdown](https://github.com/smogon/pokemon-showdown)'s chat and wanted them in my terminal, mainly for using while I play PokeMMO.
 
-It's made in TypeScript because it uses the [`pokemon-showdown`](https://www.npmjs.com/package/pokemon-showdown) npm package directly, all the data (type charts, learnsets, tier info, move descriptions) comes from there, so updating the dependency is enough to get new Pokemon, tier changes, etc that pokemon showdown might add in the future.
+It's made in TypeScript because it uses the [`@pkmn/sim`](https://www.npmjs.com/package/@pkmn/sim) npm package directly, all the data (type charts, learnsets, tier info, move descriptions) comes from there, so updating the dependency is enough to get new Pokemon, tier changes, etc that pokemon showdown might add in the future.
 
-Why not Go, Rust, Gleam, etc.? Because pokemon-showdown isn't just data on pokemon, moves, items, etc., there's also a lot of logic (learnset validation, format rules, type effectiveness with abilities and items, etc.), and reimplementing all that and keeping it in sync with every Showdown update is way more work than just letting `bun update` handle it.
+Why not Go, Rust, Gleam, etc.? Because pokemon showdown isn't just data on pokemon, moves, items, etc., there's also a lot of logic (learnset validation, format rules, type effectiveness with abilities and items, etc.), and reimplementing all that and keeping it in sync with every Showdown update is way more work than just letting `bun update` handle it.
 
 Runs on [Bun](https://bun.sh), which executes TypeScript directly with no build step. The Nix package ships the source and a small wrapper that invokes `bun run`.
 
-It's also pretty heavy (a fresh install pulls around 1GB of node_modules) because `pokemon-showdown` brings a lot of stuff pokescope doesn't actually use (full battle simulator, server/chat code, sqlite3, etc.). At some point I might switch to [`@pkmn/dex`](https://www.npmjs.com/package/@pkmn/dex) and [`@pkmn/sim`](https://www.npmjs.com/package/@pkmn/sim), which are slimmer extractions of the same logic maintained by [scheibo](https://github.com/scheibo), a pokemon-showdown core developer. On the Nix side I might also switch to [`bun2nix`](https://github.com/nix-community/bun2nix) for cleaner cross-platform reproducibility. For now it works, so I'm leaving it.
+It uses [`@pkmn/sim`](https://www.npmjs.com/package/@pkmn/sim) from [Modular Pokémon Showdown](https://github.com/pkmn), a slimmer extraction of [pokemon showdown](https://github.com/smogon/pokemon-showdown)'s data, simulator, and team validator. Nix builds go through [`bun2nix`](https://github.com/nix-community/bun2nix) for per-package reproducibility.
+
+`@pkmn/sim` is also published much more often than the `pokemon-showdown` npm package (every couple of weeks vs years between releases), so competitive users get tier moves, format changes, and item description updates pretty quickly.
 
 Also thanks to my fren William for helping me choose the name. :)
 
@@ -75,3 +77,13 @@ pokescope dexsearch fire, ou
 All commands support a `[gen]` prefix (e.g. `gen4`, `adv`, `bw`) to query older generations. Type `help` inside the REPL for full usage and examples.
 
 Might add more commands in the future, like the `randomquote` one which is not from pokemon showdown.
+
+## Updating @pkmn/sim
+
+Note to future me:
+
+```
+bun update @pkmn/sim
+bunx bun2nix -o bun.nix
+git add package.json bun.lock bun.nix && git commit -m "chore: bump @pkmn/sim"
+```

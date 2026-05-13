@@ -1,6 +1,5 @@
-import { Dex } from 'pokemon-showdown';
-import type { Move } from 'pokemon-showdown/dist/sim/dex-moves';
-import type { Species } from 'pokemon-showdown/dist/sim/dex-species';
+import { Dex } from '@pkmn/sim';
+import type { Move, Species } from '@pkmn/sim';
 import { bold, dim } from '../ansi';
 import { cmdDexsearch } from './dexsearch';
 import { cmdMovesearch } from './movesearch';

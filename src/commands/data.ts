@@ -1,4 +1,5 @@
-import { Dex } from 'pokemon-showdown';
+import { Dex } from '@pkmn/sim';
+import { dataSearch } from '../datasearch';
 import { bold, dim } from '../ansi';
 import { splitGen } from '../gen';
 import { stripHtml } from '../format';
@@ -24,7 +25,7 @@ export function cmdData(args: string[]): void {
     if (found) target = found.baseSpecies;
   }
 
-  const results = dex.dataSearch(target);
+  const results = dataSearch(dex, target);
 
   if (!results || results.length === 0) {
     console.error(`'${target}' doesn't match any Pokemon, item, move, ability, or nature${dex !== Dex ? ' in ' + dex.currentMod : ''}.`);
