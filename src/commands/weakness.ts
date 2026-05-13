@@ -1,6 +1,7 @@
-import { Dex } from 'pokemon-showdown';
+import { Dex } from '@pkmn/sim';
 import { bold, dim, red, green, cyan, yellow } from '../ansi';
 import { splitGen } from '../gen';
+import { dataSearch } from '../datasearch';
 
 export function cmdWeakness(args: string[]): void {
   if (!args.length) {
@@ -36,7 +37,7 @@ export function cmdWeakness(args: string[]): void {
     for (let i = 1; i < targets.length; i++) {
       let extra = dex.types.get(targets[i]);
       if (!extra.exists) {
-        const fuzzy = dex.dataSearch(targets[i], ['TypeChart']);
+        const fuzzy = dataSearch(dex, targets[i], ['TypeChart']);
         if (fuzzy?.length) extra = dex.types.get(fuzzy[0].name as string);
       }
       if (extra.exists && !types.includes(extra.name)) {
@@ -50,7 +51,7 @@ export function cmdWeakness(args: string[]): void {
     for (let i = 1; i < targets.length; i++) {
       let extra = dex.types.get(targets[i]);
       if (!extra.exists) {
-        const fuzzy = dex.dataSearch(targets[i], ['TypeChart']);
+        const fuzzy = dataSearch(dex, targets[i], ['TypeChart']);
         if (fuzzy?.length) extra = dex.types.get(fuzzy[0].name as string);
       }
       if (extra.exists && !types.includes(extra.name)) {
@@ -59,8 +60,8 @@ export function cmdWeakness(args: string[]): void {
       }
     }
   } else {
-    const fuzzySpecies = dex.dataSearch(targets[0], ['Pokedex']);
-    const fuzzyType = dex.dataSearch(targets[0], ['TypeChart']);
+    const fuzzySpecies = dataSearch(dex, targets[0], ['Pokedex']);
+    const fuzzyType = dataSearch(dex, targets[0], ['TypeChart']);
     if (fuzzySpecies?.length) {
       const sp = dex.species.get(fuzzySpecies[0].name as string);
       if (sp.exists) {

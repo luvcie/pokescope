@@ -1,5 +1,4 @@
-import type { ModdedDex } from 'pokemon-showdown/dist/sim/dex';
-import type { Move } from 'pokemon-showdown/dist/sim/dex-moves';
+import type { ModdedDex, Move } from '@pkmn/sim';
 
 // Calculates type effectiveness accounting for onEffectiveness overrides (Freeze-Dry, Flying Press, etc.)
 export function calcTypeEff(dex: ModdedDex, source: Move | string, defTypes: string[]): number {

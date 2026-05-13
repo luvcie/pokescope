@@ -1,4 +1,4 @@
-import { Dex } from 'pokemon-showdown';
+import { Dex } from '@pkmn/sim';
 import { bold, dim } from '../ansi';
 import { cmdData } from './data';
 

@@ -1,4 +1,4 @@
-import { Dex, TeamValidator } from 'pokemon-showdown';
+import { Dex, TeamValidator } from '@pkmn/sim';
 import { bold, dim, red, green } from '../ansi';
 import { parseGenPrefix } from '../gen';
 

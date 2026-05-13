@@ -1,5 +1,5 @@
 import * as readline from 'readline';
-import { Dex } from 'pokemon-showdown';
+import { Dex } from '@pkmn/sim';
 import { bold, cyan, blue, B, CYAN, R } from './ansi';
 import { showHelp } from './help';
 import { cmdWeakness } from './commands/weakness';
