@@ -2,34 +2,22 @@
   description = "Pokémon Showdown info commands in your terminal";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    # SPIKE: pointing at Eveeifyeve/nixpkgs branch `bun-hooks` to test PR #376299
+    # (bun.fetchDeps + bun.configHook). Latest commit on the branch as of 2026-05-14.
+    nixpkgs.url = "github:Eveeifyeve/nixpkgs/77139725dce1a5eb6a364d54aa12d7cb8524dced";
     systems.url = "github:nix-systems/default";
-
-    bun2nix.url = "github:nix-community/bun2nix?ref=2.1.0";
-    bun2nix.inputs.nixpkgs.follows = "nixpkgs";
-    bun2nix.inputs.systems.follows = "systems";
-  };
-
-  nixConfig = {
-    extra-substituters = [ "https://nix-community.cachix.org" ];
-    extra-trusted-public-keys = [
-      "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="
-    ];
   };
 
   outputs = inputs:
     let
       eachSystem = inputs.nixpkgs.lib.genAttrs (import inputs.systems);
-      pkgsFor = eachSystem (system:
-        import inputs.nixpkgs {
-          inherit system;
-          overlays = [ inputs.bun2nix.overlays.default ];
-        });
+      pkgsFor = eachSystem (system: import inputs.nixpkgs { inherit system; });
     in {
       packages = eachSystem (system:
         let pkgs = pkgsFor.${system}; in {
-          default = pkgs.bun2nix.mkDerivation {
-            packageJson = ./package.json;
+          default = pkgs.stdenv.mkDerivation (finalAttrs: {
+            pname = "pokescope";
+            version = "0.1.0";
 
             src = pkgs.lib.cleanSourceWith {
               src = ./.;
@@ -37,14 +25,44 @@
                 !(type == "directory" && baseNameOf name == "node_modules");
             };
 
-            bunDeps = pkgs.bun2nix.fetchBunDeps {
-              bunNix = ./bun.nix;
+            bunDeps = pkgs.bun.fetchDeps {
+              inherit (finalAttrs) pname version src;
+              installFlags = [ "--omit=dev" ];
+              outputHash = "sha256-7r0CTrUO+bKgzXgYij1Gq+9ycbCsoQJzPQKz1R1wMvw=";
+              outputHashAlgo = "sha256";
             };
 
-            nativeBuildInputs = [ pkgs.makeWrapper ];
-
-            dontUseBunBuild = true;
             bunInstallFlags = [ "--linker=isolated" "--omit=dev" ];
+
+            nativeBuildInputs = [
+              pkgs.bun
+              pkgs.makeWrapper
+            ];
+
+            dontBuild = true;
+
+            # WORKAROUND for PR #376299 bug: configHook script expects tarball to
+            # unpack into a named subdirectory but fetchDeps tars contents at root.
+            # Inline equivalent logic here instead of `nativeBuildInputs = [ bun.configHook ];`
+            configurePhase = ''
+              runHook preConfigure
+
+              export HOME=$(mktemp -d)
+              export BUN_INSTALL_CACHE_DIR=$(mktemp -d)
+
+              tar -xzf $bunDeps -C $BUN_INSTALL_CACHE_DIR
+              chmod -R +w $BUN_INSTALL_CACHE_DIR
+
+              bun install \
+                --registry=http://localhost \
+                --ignore-scripts \
+                --linker=isolated --omit=dev \
+                --frozen-lockfile
+
+              patchShebangs node_modules/{*,.*}
+
+              runHook postConfigure
+            '';
 
             installPhase = ''
               runHook preInstall
@@ -69,13 +87,11 @@
               mainProgram = "pokescope";
               platforms = platforms.linux ++ platforms.darwin;
             };
-          };
+          });
         });
 
       devShells = eachSystem (system:
         let pkgs = pkgsFor.${system}; in {
-          # bun2nix is in package.json devDependencies, so `bunx bun2nix -o bun.nix`
-          # works after `bun install` without needing the Rust build here.
           default = pkgs.mkShell {
             packages = with pkgs; [ bun ];
           };
