@@ -68,6 +68,11 @@ ${blue('nature')} [name]
        nature timid
        nature
 
+${blue('compare')} [gen] <pokemon1>, <pokemon2>
+  Side-by-side base stat comparison.
+  e.g. compare garchomp, dragonite
+       compare gen4, garchomp, salamence
+
 ${blue('team')} [gen] <pokemon1>, <pokemon2>[, ...]
   Team weakness analysis: shared weaknesses and types no member resists.
   e.g. team charizard, blastoise, venusaur
