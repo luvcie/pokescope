@@ -68,6 +68,12 @@ ${blue('nature')} [name]
        nature timid
        nature
 
+${blue('ability')} [gen] <ability>
+  List all Pokemon with a given ability, grouped by regular vs hidden.
+  e.g. ability intimidate
+       ability bw, speed boost
+       ability gen4, levitate
+
 ${blue('evspread')} [gen] <stat>
   List all Pokemon that give EVs in a stat, grouped by yield amount.
   e.g. evspread atk
