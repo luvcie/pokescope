@@ -40,6 +40,16 @@ To install permanently:
 nix profile add github:luvcie/pokescope
 ```
 
+To update:
+```
+nix profile upgrade pokescope
+```
+
+To list all packages installed via nix profile:
+```
+nix profile list
+```
+
 Or add to your flake:
 ```nix
 inputs.pokescope.url = "github:luvcie/pokescope";
@@ -75,6 +85,7 @@ pokescope dexsearch fire, ou
 | `itemsearch` | search items by description keywords |
 | `statcalc` | calculate a final stat value from base stat, EVs, IVs, nature, and modifier |
 | `nature` | stat changes for a nature, or list all 25 natures |
+| `team` | team weakness analysis: shared weaknesses and uncovered types |
 | `ability` | list all Pokemon with a given ability, grouped by regular vs hidden |
 | `evspread` | list all Pokemon that give EVs in a stat, grouped by yield amount |
 | `evyield` | EV yield when defeating a Pokemon |
@@ -84,7 +95,7 @@ pokescope dexsearch fire, ou
 
 All commands support a `[gen]` prefix (e.g. `gen4`, `adv`, `bw`) to query older generations. Type `help` inside the REPL for full usage and examples.
 
-Some commands aren't from Pokemon Showdown, like `randomquote` and `evyield`. Might add more in the future. :)
+Some commands aren't from Pokemon Showdown: `evyield`, `evspread`, `nature`, `ability`, `team`, and `randomquote`. Might add more in the future. :)
 
 ## Updating @pkmn/sim
 

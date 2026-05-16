@@ -68,6 +68,11 @@ ${blue('nature')} [name]
        nature timid
        nature
 
+${blue('team')} [gen] <pokemon1>, <pokemon2>[, ...]
+  Team weakness analysis: shared weaknesses and types no member resists.
+  e.g. team charizard, blastoise, venusaur
+       team bw, garchomp, ferrothorn, politoed
+
 ${blue('ability')} [gen] <ability>
   List all Pokemon with a given ability, grouped by regular vs hidden.
   e.g. ability intimidate

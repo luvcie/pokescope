@@ -16,6 +16,7 @@ import { cmdEv } from './commands/ev';
 import { cmdNature } from './commands/nature';
 import { cmdEvspread } from './commands/evspread';
 import { cmdAbilities } from './commands/abilities';
+import { cmdTeam } from './commands/team';
 
 const COMMANDS = [
   'weakness', 'weak', 'weaknesses', 'resist',
@@ -33,6 +34,7 @@ const COMMANDS = [
   'nature',
   'evspread',
   'ability',
+  'team',
   'randomquote', 'rq',
   'help', 'exit', 'quit',
 ];
@@ -130,6 +132,9 @@ function dispatch(cmd: string, args: string[]): void {
     break;
   case 'ability':
     cmdAbilities(args);
+    break;
+  case 'team':
+    cmdTeam(args);
     break;
   case 'randompokemon':
   case 'randpoke':
