@@ -62,6 +62,11 @@ ${blue('itemsearch')} <description words>  Alias: is
        itemsearch natural gift fire
        itemsearch berry, gen4
 
+${blue('evyield')} <pokemon>  Alias: ev
+  EV yield when defeating a Pokemon.
+  e.g. evyield blissey
+       evyield nidoran-m
+
 ${blue('statcalc')} [level] [pokemon or base stat] [stat] [ivs] [evs] [nature] [modifier]
   Calculate the final value of a stat.
   note: level must use lv prefix (lv50, lv1), bare numbers are treated as base stats.

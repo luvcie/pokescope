@@ -12,6 +12,7 @@ import { cmdMovesearch } from './commands/movesearch';
 import { cmdItemsearch } from './commands/itemsearch';
 import { cmdStatcalc } from './commands/statcalc';
 import { cmdRandomPokemon, cmdRandomMove, cmdRandomQuote } from './commands/random';
+import { cmdEv } from './commands/ev';
 
 const COMMANDS = [
   'weakness', 'weak', 'weaknesses', 'resist',
@@ -25,6 +26,7 @@ const COMMANDS = [
   'statcalc',
   'randompokemon', 'randpoke', 'rollpokemon', 'rp',
   'randommove', 'randmove', 'rollmove', 'rm',
+  'evyield',
   'randomquote', 'rq',
   'help', 'exit', 'quit',
 ];
@@ -41,7 +43,9 @@ function getSpecies(): string[] {
 
 function completer(line: string): [string[], string] {
   if (!line.includes(' ')) {
-    const hits = COMMANDS.filter((c) => c.startsWith(line));
+    const slash = line.startsWith('/');
+    const word = slash ? line.slice(1) : line;
+    const hits = COMMANDS.filter((c) => c.startsWith(word)).map(c => slash ? '/' + c : c);
     return [hits, line];
   }
   const sepIdx = Math.max(line.lastIndexOf(','), line.lastIndexOf('/'), line.indexOf(' '));
@@ -107,6 +111,10 @@ function dispatch(cmd: string, args: string[]): void {
     break;
   case 'statcalc':
     cmdStatcalc(args);
+    break;
+  case 'evyield':
+  case 'ev':
+    cmdEv(args);
     break;
   case 'randompokemon':
   case 'randpoke':
