@@ -53,6 +53,7 @@
 
               cp pokescope.ts tsconfig.json $out/share/pokescope/
               cp -r src $out/share/pokescope/
+              cp -r data $out/share/pokescope/
               cp -r node_modules $out/share/pokescope/
 
               makeWrapper ${pkgs.bun}/bin/bun $out/bin/pokescope \
