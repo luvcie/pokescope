@@ -1,4 +1,4 @@
-import { blue, dim } from './ansi';
+import { blue, bold, dim } from './ansi';
 
 export function showHelp(): void {
   console.log(`
@@ -68,6 +68,12 @@ ${blue('nature')} [name]
        nature timid
        nature
 
+${blue('evspread')} [gen] <stat>
+  List all Pokemon that give EVs in a stat, grouped by yield amount.
+  e.g. evspread atk
+       evspread bw atk
+       evspread gen3, speed
+
 ${blue('evyield')} <pokemon>  Alias: ev
   EV yield when defeating a Pokemon.
   e.g. evyield blissey
@@ -99,5 +105,16 @@ ${blue('randomquote')}  Alias: rq
 
 ${blue('help')}  Show this help.
 ${blue('exit')}  Exit the program.  ${dim('(REPL mode only)')}
+
+${bold('Generation prefixes')} (supported by most commands):
+  gen1  ${dim('rby, rb')}
+  gen2  ${dim('gsc, gs')}
+  gen3  ${dim('adv, rs')}
+  gen4  ${dim('dpp, dp')}
+  gen5  ${dim('bw, bw2')}
+  gen6  ${dim('oras, xy')}
+  gen7  ${dim('usum, sm')}
+  gen8  ${dim('ss')}
+  gen9  ${dim('sv')}
 `);
 }

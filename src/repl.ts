@@ -14,6 +14,7 @@ import { cmdStatcalc } from './commands/statcalc';
 import { cmdRandomPokemon, cmdRandomMove, cmdRandomQuote } from './commands/random';
 import { cmdEv } from './commands/ev';
 import { cmdNature } from './commands/nature';
+import { cmdEvspread } from './commands/evspread';
 
 const COMMANDS = [
   'weakness', 'weak', 'weaknesses', 'resist',
@@ -29,6 +30,7 @@ const COMMANDS = [
   'randommove', 'randmove', 'rollmove', 'rm',
   'evyield',
   'nature',
+  'evspread',
   'randomquote', 'rq',
   'help', 'exit', 'quit',
 ];
@@ -120,6 +122,9 @@ function dispatch(cmd: string, args: string[]): void {
     break;
   case 'nature':
     cmdNature(args);
+    break;
+  case 'evspread':
+    cmdEvspread(args);
     break;
   case 'randompokemon':
   case 'randpoke':
