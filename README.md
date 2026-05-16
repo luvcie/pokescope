@@ -74,6 +74,7 @@ pokescope dexsearch fire, ou
 | `movesearch` | search moves by type, category, BP, flags, boosts, and more |
 | `itemsearch` | search items by description keywords |
 | `statcalc` | calculate a final stat value from base stat, EVs, IVs, nature, and modifier |
+| `nature` | stat changes for a nature, or list all 25 natures |
 | `evyield` | EV yield when defeating a Pokemon |
 | `randompokemon` | random Pokemon, optionally filtered by dexsearch criteria |
 | `randommove` | random move, optionally filtered by movesearch criteria |

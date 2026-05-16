@@ -62,6 +62,12 @@ ${blue('itemsearch')} <description words>  Alias: is
        itemsearch natural gift fire
        itemsearch berry, gen4
 
+${blue('nature')} [name]
+  Show stat changes for a nature, or list all 25 natures with their effects.
+  e.g. nature jolly
+       nature timid
+       nature
+
 ${blue('evyield')} <pokemon>  Alias: ev
   EV yield when defeating a Pokemon.
   e.g. evyield blissey
