@@ -1,5 +1,7 @@
 # Pokescope
 
+> A terminal tool for looking up Pokemon data: type effectiveness, move compatibility, dex searches, stat calc, and more. Mostly Pokemon Showdown's lookup commands ported to the terminal, with a few personal additions.
+
 I liked the lookup commands in [Pokemon Showdown](https://github.com/smogon/pokemon-showdown)'s chat and wanted them in my terminal, mainly for using while I play PokeMMO.
 
 It's made in TypeScript because it uses the [`@pkmn/sim`](https://www.npmjs.com/package/@pkmn/sim) npm package directly, all the data (type charts, learnsets, tier info, move descriptions) comes from there, so updating the dependency is enough to get new Pokemon, tier changes, etc that pokemon showdown might add in the future.
@@ -72,13 +74,14 @@ pokescope dexsearch fire, ou
 | `movesearch` | search moves by type, category, BP, flags, boosts, and more |
 | `itemsearch` | search items by description keywords |
 | `statcalc` | calculate a final stat value from base stat, EVs, IVs, nature, and modifier |
+| `evyield` | EV yield when defeating a Pokemon |
 | `randompokemon` | random Pokemon, optionally filtered by dexsearch criteria |
 | `randommove` | random move, optionally filtered by movesearch criteria |
 | `randomquote` | a random Pokemon quote (not from Showdown, just something I added) |
 
 All commands support a `[gen]` prefix (e.g. `gen4`, `adv`, `bw`) to query older generations. Type `help` inside the REPL for full usage and examples.
 
-Might add more commands in the future, like the `randomquote` one which is not from pokemon showdown.
+Some commands aren't from Pokemon Showdown, like `randomquote` and `evyield`. Might add more in the future. :)
 
 ## Updating @pkmn/sim
 
